@@ -1,0 +1,8 @@
+/CelebA*/
+/data*/
+/familydata/
+*.zip
+.idea
+*.pclprof
+*.jpg
+

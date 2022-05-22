@@ -2,11 +2,9 @@ import random
 import numpy as np
 import torch
 import torchvision.transforms as transforms
-import pandas as pd
 import learn2learn as l2l
 from line_profiler_pycharm import profile
 
-# from torch.utils.data import Dataset, DataLoader, Subset
 from celebA_dataset_creation import CustomDataset, CustomLoader, CustomSampler, CustomBenchmarkSampler
 from torch import nn, optim
 
@@ -114,22 +112,12 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
         meta_valid_error = 0.0
         meta_valid_accuracy = 0.0
 
-        # batch = CustomLoader(dataset)
-        # train_batch = batch.train_loader(2, 4)
-        # val_batch = batch.val_loader(0, 4)
-
-        # batch = CustomLoader(dataset) # old
-        # sampler = CustomSampler(dataset, 2 * shots, ways, 2 * shots, ways)
-
         for task in range(meta_batch_size):
             sampler = CustomSampler(dataset, 2 * shots, ways, 2 * shots, ways)
             # sampler = CustomBenchmarkSampler(dataset, 2 * shots, ways, 2 * shots, ways)
 
             # Compute meta-training loss
             learner = maml.clone()
-            # batch, dataset, label = batch_loader(k_samples, dataset, label)
-            # train_batch = batch.train_loader(task, int(batch.train_size / 2))
-            # val_batch = batch.val_loader(task, int(batch.val_size / 2))
             evaluation_error, evaluation_accuracy = \
                 fast_adapt(sampler.train_sampler(), learner, loss, adaptation_steps, shots, ways, device)
             evaluation_error.backward()
@@ -138,8 +126,6 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
 
             # Compute meta-validation loss
             learner = maml.clone()
-            # batch = tasksets.validation.sample()
-
             evaluation_error, evaluation_accuracy = \
                 fast_adapt(sampler.val_sampler(), learner, loss, adaptation_steps, shots, ways, device)
             meta_valid_error += evaluation_error.item()
@@ -148,11 +134,11 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
         # Print some metrics
         # print('\n')
         print('Iteration', iteration)
-        print('Meta Train Error', meta_train_error / meta_batch_size)
-        print('Meta Train Accuracy', meta_train_accuracy / meta_batch_size)
-        print('Meta Valid Error', meta_valid_error / meta_batch_size)
-        print('Meta Valid Accuracy', meta_valid_accuracy / meta_batch_size)
-        print('\n')
+        # print('Meta Train Error', meta_train_error / meta_batch_size)
+        # print('Meta Train Accuracy', meta_train_accuracy / meta_batch_size)
+        # print('Meta Valid Error', meta_valid_error / meta_batch_size)
+        # print('Meta Valid Accuracy', meta_valid_accuracy / meta_batch_size)
+        # print('\n')
 
         # Average the accumulated gradients and optimize
         for p in maml.parameters():
@@ -161,13 +147,13 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
 
     meta_test_error = 0.0
     meta_test_accuracy = 0.0
-    # dataset, unique = create_dataset(shots, ways, meta_batch_size, dataroot, labels_path, image_size=32)
-    # batch = CustomLoader(dataset)
-    sampler = CustomSampler(dataset, 2 * shots, ways, 2 * shots, ways)
-    # sampler = CustomBenchmarkSampler(dataset, 2 * shots, ways, 2 * shots, ways)
-    # test_batch = batch.test_loader(2, 4)
+
     for task in range(meta_batch_size):
         # Compute meta-testing loss
+
+        sampler = CustomSampler(dataset, 2 * shots, ways, 2 * shots, ways)
+        # sampler = CustomBenchmarkSampler(dataset, 2 * shots, ways, 2 * shots, ways
+
         learner = maml.clone()
         evaluation_error, evaluation_accuracy = \
             fast_adapt(sampler.test_sampler(), learner, loss, adaptation_steps, shots, ways, device)
@@ -175,6 +161,7 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
         meta_test_accuracy += evaluation_accuracy.item()
     print('Meta Test Error', meta_test_error / meta_batch_size)
     print('Meta Test Accuracy', meta_test_accuracy / meta_batch_size)
+    return meta_test_accuracy / meta_batch_size
 
 
 if __name__ == '__main__':
@@ -185,11 +172,11 @@ if __name__ == '__main__':
     :param test_samples: number of samples per test/val batch
     :param num_tasks: number of tasks in each dataset
     """
-    # N_tasks = 5  # number of tasks
-    # n_classes = 5  # classes per tasks = number of ways
-    # k_samples = 10  # half the number of samples per class
+    test_accuracy = 0
     num_tasks = 3
     ways_num_classes_per_task = 5
     shots_num_samples_per_class = 1
-    main(tasks=num_tasks, ways=ways_num_classes_per_task, meta_batch_size=32, shots=shots_num_samples_per_class,
-         num_iterations=5)
+    for i in range(10):
+        test_accuracy += main(tasks=num_tasks, ways=ways_num_classes_per_task, meta_batch_size=32,
+                              shots=shots_num_samples_per_class, num_iterations=10)
+    print(test_accuracy / 10)

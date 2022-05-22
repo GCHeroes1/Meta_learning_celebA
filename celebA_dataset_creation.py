@@ -343,8 +343,8 @@ class CustomBenchmarkSampler:
         return temp
 
     def sample_dataset(self, type, train_size=6, test_size=2):
-        # indexes = np.arange(len(self.dataset))
-        indexes = indexes = np.arange(0 * self.number_of_samples, (0 + 1) * self.number_of_samples)
+        indexes = np.arange(len(self.dataset))
+        # indexes = np.arange(0 * self.number_of_samples, (0 + 1) * self.number_of_samples)
         val_cutoff = train_size + test_size  # 8
 
         if type == "train":
