@@ -113,8 +113,8 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
         meta_valid_accuracy = 0.0
 
         for task in range(meta_batch_size):
-            sampler = CustomSampler(dataset, 2 * shots, ways, 2 * shots, ways)
-            # sampler = CustomBenchmarkSampler(dataset, 2 * shots, ways, 2 * shots, ways)
+            # sampler = CustomSampler(dataset, 2 * shots, ways, 2 * shots, ways)
+            sampler = CustomBenchmarkSampler(dataset, 2 * shots, ways, 2 * shots, ways)
 
             # Compute meta-training loss
             learner = maml.clone()
@@ -133,7 +133,7 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
 
         # Print some metrics
         # print('\n')
-        print('Iteration', iteration)
+        # print('Iteration', iteration)
         # print('Meta Train Error', meta_train_error / meta_batch_size)
         # print('Meta Train Accuracy', meta_train_accuracy / meta_batch_size)
         # print('Meta Valid Error', meta_valid_error / meta_batch_size)
@@ -151,8 +151,8 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
     for task in range(meta_batch_size):
         # Compute meta-testing loss
 
-        sampler = CustomSampler(dataset, 2 * shots, ways, 2 * shots, ways)
-        # sampler = CustomBenchmarkSampler(dataset, 2 * shots, ways, 2 * shots, ways
+        # sampler = CustomSampler(dataset, 2 * shots, ways, 2 * shots, ways)
+        sampler = CustomBenchmarkSampler(dataset, 2 * shots, ways, 2 * shots, ways)
 
         learner = maml.clone()
         evaluation_error, evaluation_accuracy = \
@@ -177,6 +177,7 @@ if __name__ == '__main__':
     ways_num_classes_per_task = 5
     shots_num_samples_per_class = 1
     for i in range(10):
-        test_accuracy += main(tasks=num_tasks, ways=ways_num_classes_per_task, meta_batch_size=32,
+        print('Iteration', i + 1)
+        test_accuracy += main(tasks=1, ways=ways_num_classes_per_task * 3, meta_batch_size=32,
                               shots=shots_num_samples_per_class, num_iterations=10)
     print(test_accuracy / 10)

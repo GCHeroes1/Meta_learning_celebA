@@ -49,35 +49,12 @@ class CustomDataset(Dataset):
             if class_name in class_id:
                 return key
 
-    def __init__(self, tasks=3, classes=5, class_size=5, img_path=dataroot, label_path=labels_path, transform=None,
-                 image_size=32):
-        self.img_dim = (image_size, image_size)
-        self.transform = transform
-        self.tasks = tasks
-        self.classes = classes
-        self.class_size = class_size
-        self.samples_per_class = self.class_size * 2
-
-        self.img_path = img_path
-        self.label_path = label_path
-        self.class_map = self.create_class_map(self.samples_per_class)
-        self.class_map = {key: val for key, val in self.class_map.items() if len(val) >= self.samples_per_class}
-
-        # # you can use this code to remap the classes
-        # self.data = []
-        # classes = np.arange(0, self.classes * self.tasks)
-        # new_map = {}
-        # for i, (class_remapped, (key, val)) in enumerate(zip(classes, self.class_map.items())):
-        #     new_map[class_remapped] = val
-        #     for each in val:
-        #         self.data.append([dataroot + os.path.sep + each, class_remapped])
-        # self.class_map = new_map
-
+    def task_class_remap(self):
         # you can use this code to remap the classes and assign to tasks
         existing_mapping = self.class_map
         tasks = np.arange(0, self.tasks)
         task_map = {}
-        self.data = []
+        # self.data = []
         for i, task in enumerate(tasks):  # for each task
             classes = np.arange(0, self.classes)
             class_map = {}
@@ -90,28 +67,33 @@ class CustomDataset(Dataset):
             for key_ in keys_to_be_deleted:
                 del (existing_mapping[key_])
             task_map[task] = class_map
-        self.task_map = task_map
+        return task_map
 
-        # # this is too slow, you dont really need to go through every single image and add it to the data array
-        # self.data = []
-        # file_list = glob.glob(self.img_path + "*")
-        # for class_path in file_list:
-        #     for img_path in glob.glob(class_path + "/*.jpg"):
-        #         class_name = img_path.split(os.path.sep)[-1]
-        #         class_id = self.get_key(class_name)
-        #         if class_id:
-        #             self.data.append([img_path, class_id])
-        # print(self.data)
+    def __init__(self, tasks=3, classes=15, samples_per_class=10, img_path=dataroot, label_path=labels_path,
+                 transform=None, image_size=32):
+        self.img_dim = (image_size, image_size)
+        self.transform = transform
+        self.tasks = tasks  # 3
+        self.classes = classes  # 15
+        self.classes_per_task = int(classes / tasks)  # 5
+        self.samples_per_class = samples_per_class  # 10
+
+        self.img_path = img_path
+        self.label_path = label_path
+        # this creates a dict of lists, each key is the class, each value is list of files corresponding to that class
+        self.class_map = self.create_class_map(self.samples_per_class)
+        # trims the lists down
+        self.class_map = {key: val for key, val in self.class_map.items() if len(val) >= self.samples_per_class}
+
+        self.data = []
+        self.task_map = self.task_class_remap()
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
-        # if len(self.class_map) < self.classes:
-        #     return None
         img_path, class_id = self.data[idx]
         img_tensor = cv2.resize(cv2.imread(img_path), self.img_dim)
-        # img_tensor = torch.from_numpy(img).permute(2, 0, 1)
         class_id = torch.tensor([int(class_id)])
         if self.transform:
             img_tensor = self.transform(img_tensor)
@@ -187,13 +169,6 @@ class CustomLoader:
 
 
 class CustomSampler:
-    def extract_2(self, nested_list, index):
-        temp = np.empty(0, dtype=int)
-        for class_ in nested_list:
-            class_ = np.array(class_)
-            temp = np.append(temp, class_[index])
-        return temp
-
     def extract(self, nested_list, index):
         temp = []
         for class_ in nested_list:
@@ -201,80 +176,36 @@ class CustomSampler:
                 temp.append(class_[i])
         return temp
 
-    def extract_3(self, nested_list, index):
-        temp = np.zeros(len(index) * len(nested_list), dtype=int)
-        for i, class_ in enumerate(nested_list):
-            # for i in index:
-            class_ = np.array(class_)
-            np.put(temp, [i, i + 1], class_[index])
-            # temp[i] = class_[index]
-        return temp
+    def sample_dataset_train(self, task, train_size=6):
+        indexes = np.arange(task * self.number_of_samples, (task + 1) * self.number_of_samples)
 
-    # def sample_dataset_hard_coded(self):
-    #     for task in range(self.dataset.tasks):
-    #         # Separate data into adaptation/evalutation sets
-    #         indexes = np.arange(task * self.number_of_samples, (task + 1) * self.number_of_samples)
-    #         # np.random.shuffle(indexes)
-    #         train_indexes = sorted([y for sub in [indexes[x::10] for x in range(0, 6)] for y in sub])
-    #         val_indexes = sorted([y for sub in [indexes[x::10] for x in range(6, 8)] for y in sub])
-    #         test_indexes = sorted([y for sub in [indexes[x::10] for x in range(8, 10)] for y in sub])
-    #         training = [train_indexes[i:i + 6] for i in range(0, len(train_indexes), 6)]
-    #         valing = [val_indexes[i:i + 2] for i in range(0, len(val_indexes), 2)]
-    #         testing = [test_indexes[i:i + 2] for i in range(0, len(test_indexes), 2)]
-    #         random_train = np.random.choice(np.arange(6), (2,), replace=False)
-    #         random_test = np.random.choice(np.arange(2), (2,), replace=False)
-    #         train = self.extract(training, random_train)
-    #         val = self.extract(valing, random_test)
-    #         test = self.extract(testing, random_test)
-    #         # test = indexes_3[1][random]
-    #         print(random_train)
-    #         # training_indices[np.arange(shots * ways) * 2] = True
-    #         # evaluation_indices = torch.from_numpy(~adaptation_indices)
-    #         # adaptation_indices = torch.from_numpy(adaptation_indices)
-    #         # adaptation_data = data[adaptation_indices]
-    #         # adaptation_labels = labels[adaptation_indices]
-    #         # evaluation_data = data[evaluation_indices]
-    #         # evaluation_labels = labels[evaluation_indices]
-    #
-    #         # indexes = np.arange(task * self.number_of_samples, (task + 1) * self.number_of_samples)
-    #         # self.train_indexes.append(indexes[np.arange(self.train_size)])
-    #         # indexes = np.delete(indexes, np.where(np.isin(indexes, self.train_indexes)))
-    #         # self.val_indexes.append(indexes[np.arange(self.train_size)])
-    #         # indexes = np.delete(indexes, np.where(np.isin(indexes, self.val_indexes)))
-    #         # self.test_indexes.append(indexes[np.arange(self.train_size)])
-    #         # # indexes = np.delete(indexes, np.where(np.isin(indexes, self.test_indexes)))
+        train_indexes = sorted(
+            [y for sub in [indexes[x::self.sample_size] for x in range(0, train_size)] for y in sub])
+        train = [train_indexes[i:i + train_size] for i in range(0, len(train_indexes), train_size)]
+        random_train = np.random.choice(np.arange(train_size), (2,), replace=False)
+        self.train_indexes = self.extract(train, random_train)
 
-    def sample_dataset(self, task, type, train_size=6, test_size=2):
+    def sample_dataset_val(self, task, train_size=6, test_size=2):
         indexes = np.arange(task * self.number_of_samples, (task + 1) * self.number_of_samples)
         val_cutoff = train_size + test_size  # 8
 
-        if type == "train":
-            train_indexes = sorted(
-                [y for sub in [indexes[x::self.train_size] for x in range(0, train_size)] for y in sub])
-            train = [train_indexes[i:i + train_size] for i in range(0, len(train_indexes), train_size)]
-            random_train = np.random.choice(np.arange(train_size), (2,), replace=False)
-            self.train_indexes = self.extract(train, random_train)
+        val_indexes = sorted(
+            [y for sub in [indexes[x::self.sample_size] for x in range(train_size, val_cutoff)] for y in sub])
+        val = [val_indexes[i:i + test_size] for i in range(0, len(val_indexes), test_size)]
+        random_test = np.random.choice(np.arange(test_size), (2,), replace=False)
+        self.val_indexes = self.extract(val, random_test)
 
-            # self.train_indexes = self.extract(train, random_train)
-            # self.train_indexes = self.extract_2(train, random_train)
-            # self.train_indexes = self.extract_3(train, random_train)
-            return
-        if type == "val":
-            val_indexes = sorted(
-                [y for sub in [indexes[x::self.train_size] for x in range(train_size, val_cutoff)] for y in sub])
-            val = [val_indexes[i:i + test_size] for i in range(0, len(val_indexes), test_size)]
-            random_test = np.random.choice(np.arange(test_size), (2,), replace=False)
-            self.val_indexes = self.extract(val, random_test)
-            return
-        if type == "test":
-            test_indexes = sorted(
-                [y for sub in [indexes[x::self.train_size] for x in range(val_cutoff, self.train_size)] for y in sub])
-            test = [test_indexes[i:i + test_size] for i in range(0, len(test_indexes), test_size)]
-            random_test = np.random.choice(np.arange(test_size), (2,), replace=False)
-            self.test_indexes = self.extract(test, random_test)
-            return
+    def sample_dataset_test(self, task, train_size=6, test_size=2):
+        indexes = np.arange(task * self.number_of_samples, (task + 1) * self.number_of_samples)
+        val_cutoff = train_size + test_size  # 8
 
-    def __init__(self, celeb_dataset, train_ways, train_samples, test_ways, test_samples):
+        test_indexes = sorted(
+            [y for sub in [indexes[x::self.sample_size] for x in range(val_cutoff, self.sample_size)] for y in sub])
+        test = [test_indexes[i:i + test_size] for i in range(0, len(test_indexes), test_size)]
+        random_test = np.random.choice(np.arange(test_size), (2,), replace=False)
+        self.test_indexes = self.extract(test, random_test)
+
+    def __init__(self, celeb_dataset):
         """
         :param train_ways: number of classes per training batch
         :param train_samples: number of samples per training batch
@@ -283,53 +214,41 @@ class CustomSampler:
         :param num_tasks: number of tasks in each dataset
         """
         self.dataset = celeb_dataset
-        self.num_tasks = self.dataset.tasks
-        self.number_of_samples = self.dataset.classes * self.dataset.samples_per_class  # this is the number of samples in each task
-        self.test_val_size = test_ways * test_samples  # this is (shots * 2) * ways
-        self.train_size = train_ways * train_samples  # this is also (shots *2) * ways
+        self.num_tasks = self.dataset.tasks  # 3
+        # this is the number of samples in the dataset, 150
+        # self.number_of_samples = self.dataset.classes * self.dataset.samples_per_class
+        self.number_of_samples = len(self.dataset)
+        self.sample_size = celeb_dataset.classes_per_task * 2  # 10 or 30, depends on number of classes per task
+        self.train_size = int(np.floor(self.sample_size * .6))
+        self.test_val_size = int(np.floor(self.sample_size * .2))
+        # self.test_val_size = test_ways * test_samples  # this is (shots * 2) * ways
+        # self.train_size = train_ways * train_samples  # this is also (shots *2) * ways
         self.train_indexes = []
         self.val_indexes = []
         self.test_indexes = []
         self.task_train = 0
         self.task_val = 0
         self.task_test = 0
-        # self.sample_dataset(0, self.train_size - 2 * 2, 2)
 
     def train_sampler(self):
-        # if self.dataset.tasks > self.task_train:
-        self.sample_dataset(np.random.randint(self.dataset.tasks), "train", self.train_size - 2 * 2, 2)
+        self.sample_dataset_train(np.random.randint(self.dataset.tasks), self.train_size)
         train_subset = Subset(self.dataset, self.train_indexes)
-        train_loader = DataLoader(train_subset, shuffle=True, batch_size=self.train_size)
+        train_loader = DataLoader(train_subset, shuffle=True, batch_size=self.sample_size)
         next_sample = next(iter(train_loader))
-        #     self.task_train += 1
-        # else:
-        #     self.task_train = 0
-        #     next_sample = self.train_sampler()
-        # print(self.task_train)
         return next_sample
 
     def val_sampler(self):
-        # if self.dataset.tasks > self.task_val:
-        self.sample_dataset(np.random.randint(self.dataset.tasks), "val", self.train_size - 2 * 2, 2)
+        self.sample_dataset_val(np.random.randint(self.dataset.tasks), self.train_size, self.test_val_size)
         val_subset = Subset(self.dataset, self.val_indexes)
-        val_loader = DataLoader(val_subset, shuffle=True, batch_size=self.test_val_size)
+        val_loader = DataLoader(val_subset, shuffle=True, batch_size=self.sample_size)
         next_sample = next(iter(val_loader))
-        #     self.task_val += 1
-        # else:
-        #     self.task_val = 0
-        #     next_sample = self.val_sampler()
         return next_sample
 
     def test_sampler(self):
-        # if self.dataset.tasks > self.task_test:
-        self.sample_dataset(np.random.randint(self.dataset.tasks), "test", self.train_size - 2 * 2, 2)
+        self.sample_dataset_test(np.random.randint(self.dataset.tasks), self.train_size, self.test_val_size)
         test_subset = Subset(self.dataset, self.test_indexes)
-        test_loader = DataLoader(test_subset, shuffle=True, batch_size=self.test_val_size)
+        test_loader = DataLoader(test_subset, shuffle=True, batch_size=self.sample_size)
         next_sample = next(iter(test_loader))
-        #     self.task_test += 1
-        # else:
-        #     self.task_test = 0
-        #     next_sample = self.test_sampler()
         return next_sample
 
 
@@ -377,6 +296,7 @@ class CustomBenchmarkSampler:
         :param test_samples: number of samples per test/val batch
         :param num_tasks: number of tasks in each dataset
         """
+        # you need to make sure that theres 2 samples of each class in each sample you provide, so 15 classes must be a 30 sized sample.
         self.dataset = celeb_dataset
         self.num_tasks = self.dataset.tasks
         self.number_of_samples = self.dataset.classes * self.dataset.samples_per_class  # this is the number of samples in each task
@@ -490,9 +410,9 @@ if __name__ == '__main__':
         # transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
     ])
 
-    dataset = CustomDataset(tasks=3, transform=transformation, image_size=image_size)
+    dataset = CustomDataset(tasks=1, classes=15, transform=transformation, image_size=image_size)
     # train_loaderA = CustomLoader(dataset)
-    train_sampler = CustomSampler(dataset, train_ways=5, train_samples=2, test_ways=5, test_samples=2)
+    train_sampler = CustomSampler(dataset)
     # for i in range(100):
     print(train_sampler.train_sampler()[1].T)
 
