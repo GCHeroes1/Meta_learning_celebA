@@ -49,7 +49,7 @@ def fast_adapt(batch, learner, loss, adaptation_steps, shots, ways, device):
     # Separate data into adaptation/evalutation sets
     adaptation_indices = np.zeros(data.size(0), dtype=bool)
     # adaptation_indices[np.arange(int(len(adaptation_indices) / 2)) * 2] = True
-    adaptation_indices[np.arange(shots * ways) * 2] = True
+    adaptation_indices[np.arange(int(len(adaptation_indices) / 2)) * 2] = True
     evaluation_indices = torch.from_numpy(~adaptation_indices)
     adaptation_indices = torch.from_numpy(adaptation_indices)
     adaptation_data, adaptation_labels = data[adaptation_indices], labels[adaptation_indices]
@@ -100,9 +100,9 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
     maml = l2l.algorithms.MAML(model, lr=fast_lr, first_order=False, allow_nograd=True)
     opt = optim.Adam(maml.parameters(), meta_lr)
     loss = nn.CrossEntropyLoss(reduction='mean')
-
-    dataset = CustomDataset(tasks=tasks, classes=ways, class_size=shots * 5, img_path=dataroot, label_path=labels_path,
-                            transform=transformation, image_size=image_size)
+    # dataset = CustomDataset(tasks=3, classes=15, transform=transformation, image_size=image_size)
+    dataset = CustomDataset(tasks=tasks, classes=ways, samples_per_class=10, img_path=dataroot,
+                            label_path=labels_path, transform=transformation, image_size=image_size)
 
     # meta_batch_size = shots * ways * tasks
     for iteration in range(num_iterations):
@@ -113,8 +113,8 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
         meta_valid_accuracy = 0.0
 
         for task in range(meta_batch_size):
-            # sampler = CustomSampler(dataset, 2 * shots, ways, 2 * shots, ways)
-            sampler = CustomBenchmarkSampler(dataset, 2 * shots, ways, 2 * shots, ways)
+            sampler = CustomSampler(dataset)
+            # sampler = CustomBenchmarkSampler(dataset, 2 * shots, ways, 2 * shots, ways)
 
             # Compute meta-training loss
             learner = maml.clone()
@@ -147,20 +147,21 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
 
     meta_test_error = 0.0
     meta_test_accuracy = 0.0
-
+    dataset = CustomDataset(tasks=tasks, classes=ways, samples_per_class=10, img_path=dataroot,
+                            label_path=labels_path, transform=transformation, image_size=image_size)
     for task in range(meta_batch_size):
         # Compute meta-testing loss
 
-        # sampler = CustomSampler(dataset, 2 * shots, ways, 2 * shots, ways)
-        sampler = CustomBenchmarkSampler(dataset, 2 * shots, ways, 2 * shots, ways)
+        sampler = CustomSampler(dataset)
+        # sampler = CustomBenchmarkSampler(dataset, 2 * shots, ways, 2 * shots, ways)
 
         learner = maml.clone()
         evaluation_error, evaluation_accuracy = \
             fast_adapt(sampler.test_sampler(), learner, loss, adaptation_steps, shots, ways, device)
         meta_test_error += evaluation_error.item()
         meta_test_accuracy += evaluation_accuracy.item()
-    print('Meta Test Error', meta_test_error / meta_batch_size)
-    print('Meta Test Accuracy', meta_test_accuracy / meta_batch_size)
+    # print('Meta Test Error', meta_test_error / meta_batch_size)
+    # print('Meta Test Accuracy', meta_test_accuracy / meta_batch_size)
     return meta_test_accuracy / meta_batch_size
 
 
@@ -173,11 +174,11 @@ if __name__ == '__main__':
     :param num_tasks: number of tasks in each dataset
     """
     test_accuracy = 0
-    num_tasks = 3
+    num_tasks = 5
     ways_num_classes_per_task = 5
     shots_num_samples_per_class = 1
     for i in range(10):
         print('Iteration', i + 1)
-        test_accuracy += main(tasks=1, ways=ways_num_classes_per_task * 3, meta_batch_size=32,
+        test_accuracy += main(tasks=num_tasks, ways=ways_num_classes_per_task * num_tasks, meta_batch_size=16,
                               shots=shots_num_samples_per_class, num_iterations=10)
     print(test_accuracy / 10)

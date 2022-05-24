@@ -15,13 +15,11 @@ from torch import nn, optim
 
 def accuracy(predictions, targets):
     predictions = predictions.argmax(dim=1).view(targets.shape)
-    print(targets)
     return (predictions == targets).sum().float() / targets.size(0)
 
 
 def fast_adapt(batch, learner, loss, adaptation_steps, shots, ways, device):
     data, labels = batch
-    print(labels)
     data, labels = data.to(device), labels.to(device)
 
     # Separate data into adaptation/evalutation sets
@@ -46,7 +44,7 @@ def fast_adapt(batch, learner, loss, adaptation_steps, shots, ways, device):
     return valid_error, valid_accuracy
 
 
-def main(ways=5, shots=1, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, adaptation_steps=1, num_iterations=3,
+def main(tasks, ways=5, shots=1, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, adaptation_steps=1, num_iterations=10,
          cuda=True, seed=42):
     random.seed(seed)
     np.random.seed(seed)
@@ -62,7 +60,7 @@ def main(ways=5, shots=1, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, adapta
                                                   train_samples=2 * shots,
                                                   test_ways=ways,
                                                   test_samples=2 * shots,
-                                                  num_tasks=20000,
+                                                  num_tasks=tasks,
                                                   root='./data_',
                                                   )
 
@@ -108,12 +106,12 @@ def main(ways=5, shots=1, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, adapta
             meta_valid_accuracy += evaluation_accuracy.item()
 
         # Print some metrics
-        print('\n')
-        print('Iteration', iteration)
-        print('Meta Train Error', meta_train_error / meta_batch_size)
-        print('Meta Train Accuracy', meta_train_accuracy / meta_batch_size)
-        print('Meta Valid Error', meta_valid_error / meta_batch_size)
-        print('Meta Valid Accuracy', meta_valid_accuracy / meta_batch_size)
+        # print('\n')
+        # print('Iteration', iteration)
+        # print('Meta Train Error', meta_train_error / meta_batch_size)
+        # print('Meta Train Accuracy', meta_train_accuracy / meta_batch_size)
+        # print('Meta Valid Error', meta_valid_error / meta_batch_size)
+        # print('Meta Valid Accuracy', meta_valid_accuracy / meta_batch_size)
 
         # Average the accumulated gradients and optimize
         for p in maml.parameters():
@@ -135,9 +133,19 @@ def main(ways=5, shots=1, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, adapta
                                                            device)
         meta_test_error += evaluation_error.item()
         meta_test_accuracy += evaluation_accuracy.item()
-    print('Meta Test Error', meta_test_error / meta_batch_size)
-    print('Meta Test Accuracy', meta_test_accuracy / meta_batch_size)
+    # print('Meta Test Error', meta_test_error / meta_batch_size)
+    # print('Meta Test Accuracy', meta_test_accuracy / meta_batch_size)
+    return meta_test_accuracy / meta_batch_size
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+    test_accuracy = 0
+    num_tasks = 5
+    ways_num_classes_per_task = 5
+    shots_num_samples_per_class = 1
+    for i in range(10):
+        print('Iteration', i + 1)
+        test_accuracy += main(tasks=num_tasks, ways=ways_num_classes_per_task * num_tasks, meta_batch_size=16,
+                              shots=shots_num_samples_per_class, num_iterations=10)
+    print(test_accuracy / 10)

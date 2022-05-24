@@ -20,9 +20,8 @@ dataroot = r"./CelebA-20220516T115258Z-001/CelebA/Img/img_align_celeba/img_align
 labels_path = r"./CelebA-20220516T115258Z-001/CelebA/Anno/identity_CelebA.txt"
 device = torch.device('cpu')
 
-
-# if torch.cuda.is_available():
-#     device = torch.device('cuda')
+if torch.cuda.is_available():
+    device = torch.device('cuda')
 
 
 class ListDict(dict):
@@ -56,13 +55,13 @@ class CustomDataset(Dataset):
         task_map = {}
         # self.data = []
         for i, task in enumerate(tasks):  # for each task
-            classes = np.arange(0, self.classes)
+            classes = np.arange(0, self.classes_per_task)
             class_map = {}
             keys_to_be_deleted = []
             for y, (class_remapped, (key, val)) in enumerate(zip(classes, existing_mapping.items())):
-                class_map[y + i * self.classes] = val
+                class_map[y + i * self.classes_per_task] = val
                 for each in val:
-                    self.data.append([dataroot + os.path.sep + each, y + i * self.classes])
+                    self.data.append([dataroot + os.path.sep + each, y + i * self.classes_per_task])
                 keys_to_be_deleted.append(key)
             for key_ in keys_to_be_deleted:
                 del (existing_mapping[key_])
@@ -77,6 +76,7 @@ class CustomDataset(Dataset):
         self.classes = classes  # 15
         self.classes_per_task = int(classes / tasks)  # 5
         self.samples_per_class = samples_per_class  # 10
+        self.samples_per_task = self.classes_per_task * self.samples_per_class  # 50
 
         self.img_path = img_path
         self.label_path = label_path
@@ -177,30 +177,32 @@ class CustomSampler:
         return temp
 
     def sample_dataset_train(self, task, train_size=6):
-        indexes = np.arange(task * self.number_of_samples, (task + 1) * self.number_of_samples)
+        indexes = np.arange(task * self.dataset.samples_per_task, (task + 1) * self.dataset.samples_per_task)
 
         train_indexes = sorted(
-            [y for sub in [indexes[x::self.sample_size] for x in range(0, train_size)] for y in sub])
+            [y for sub in [indexes[x::self.dataset.samples_per_class] for x in range(0, train_size)] for y in sub])
         train = [train_indexes[i:i + train_size] for i in range(0, len(train_indexes), train_size)]
         random_train = np.random.choice(np.arange(train_size), (2,), replace=False)
         self.train_indexes = self.extract(train, random_train)
 
     def sample_dataset_val(self, task, train_size=6, test_size=2):
-        indexes = np.arange(task * self.number_of_samples, (task + 1) * self.number_of_samples)
+        indexes = np.arange(task * self.dataset.samples_per_task, (task + 1) * self.dataset.samples_per_task)
         val_cutoff = train_size + test_size  # 8
 
         val_indexes = sorted(
-            [y for sub in [indexes[x::self.sample_size] for x in range(train_size, val_cutoff)] for y in sub])
+            [y for sub in [indexes[x::self.dataset.samples_per_class] for x in range(train_size, val_cutoff)] for y in
+             sub])
         val = [val_indexes[i:i + test_size] for i in range(0, len(val_indexes), test_size)]
         random_test = np.random.choice(np.arange(test_size), (2,), replace=False)
         self.val_indexes = self.extract(val, random_test)
 
     def sample_dataset_test(self, task, train_size=6, test_size=2):
-        indexes = np.arange(task * self.number_of_samples, (task + 1) * self.number_of_samples)
+        indexes = np.arange(task * self.dataset.samples_per_task, (task + 1) * self.dataset.samples_per_task)
         val_cutoff = train_size + test_size  # 8
 
         test_indexes = sorted(
-            [y for sub in [indexes[x::self.sample_size] for x in range(val_cutoff, self.sample_size)] for y in sub])
+            [y for sub in [indexes[x::self.dataset.samples_per_class] for x in range(val_cutoff, self.sample_size)] for
+             y in sub])
         test = [test_indexes[i:i + test_size] for i in range(0, len(test_indexes), test_size)]
         random_test = np.random.choice(np.arange(test_size), (2,), replace=False)
         self.test_indexes = self.extract(test, random_test)
@@ -219,16 +221,14 @@ class CustomSampler:
         # self.number_of_samples = self.dataset.classes * self.dataset.samples_per_class
         self.number_of_samples = len(self.dataset)
         self.sample_size = celeb_dataset.classes_per_task * 2  # 10 or 30, depends on number of classes per task
-        self.train_size = int(np.floor(self.sample_size * .6))
-        self.test_val_size = int(np.floor(self.sample_size * .2))
+        # self.sample_size = celeb_dataset.classes * 2  # 10 or 30, depends on number of classes per task
+        self.train_size = int(np.floor(self.dataset.samples_per_class * .6))
+        self.test_val_size = int(np.floor(self.dataset.samples_per_class * .2))
         # self.test_val_size = test_ways * test_samples  # this is (shots * 2) * ways
         # self.train_size = train_ways * train_samples  # this is also (shots *2) * ways
         self.train_indexes = []
         self.val_indexes = []
         self.test_indexes = []
-        self.task_train = 0
-        self.task_val = 0
-        self.task_test = 0
 
     def train_sampler(self):
         self.sample_dataset_train(np.random.randint(self.dataset.tasks), self.train_size)
@@ -411,14 +411,14 @@ if __name__ == '__main__':
     ])
 
     dataset = CustomDataset(tasks=1, classes=15, transform=transformation, image_size=image_size)
-    # train_loaderA = CustomLoader(dataset)
     train_sampler = CustomSampler(dataset)
-    # for i in range(100):
     print(train_sampler.train_sampler()[1].T)
 
-    train_sampler = CustomBenchmarkSampler(dataset, train_ways=5, train_samples=2, test_ways=5, test_samples=2)
-    # for i in range(100):
+    dataset = CustomDataset(tasks=3, classes=15, transform=transformation, image_size=image_size)
+    train_sampler = CustomSampler(dataset)
     print(train_sampler.train_sampler()[1].T)
+    # train_sampler = CustomBenchmarkSampler(dataset, train_ways=5, train_samples=2, test_ways=5, test_samples=2)
+    # print(train_sampler.train_sampler()[1].T)
     # print(train_sampler.val_sampler()[1].T)
     # print(train_sampler.test_sampler()[1].T)
     # print(train_loaderA)
