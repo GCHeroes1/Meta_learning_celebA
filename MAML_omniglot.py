@@ -94,7 +94,8 @@ def main(tasks, ways=5, shots=1, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32,
 
             # Compute meta-validation loss
             learner = maml.clone()
-            batch = tasksets.validation.sample()
+            # batch = tasksets.validation.sample()
+            batch = tasksets.train.sample()
             evaluation_error, evaluation_accuracy = fast_adapt(batch,
                                                                learner,
                                                                loss,
@@ -123,7 +124,8 @@ def main(tasks, ways=5, shots=1, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32,
     for task in range(meta_batch_size):
         # Compute meta-testing loss
         learner = maml.clone()
-        batch = tasksets.test.sample()
+        # batch = tasksets.test.sample()
+        batch = tasksets.train.sample()
         evaluation_error, evaluation_accuracy = fast_adapt(batch,
                                                            learner,
                                                            loss,

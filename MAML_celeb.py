@@ -4,7 +4,7 @@ import torch
 import torchvision.transforms as transforms
 import learn2learn as l2l
 from line_profiler_pycharm import profile
-
+from tqdm import tqdm
 from celebA_dataset_creation import CustomDataset, CustomLoader, CustomSampler, CustomBenchmarkSampler
 from torch import nn, optim
 
@@ -12,7 +12,7 @@ workers = 4
 ngpu = 1
 dataroot = r"./CelebA-20220516T115258Z-001/CelebA/Img/img_align_celeba/img_align_celeba"
 labels_path = r"./CelebA-20220516T115258Z-001/CelebA/Anno/identity_CelebA.txt"
-image_size = 128
+image_size = 100
 device = torch.device('cpu')
 if torch.cuda.is_available():
     device = torch.device('cuda')
@@ -21,21 +21,22 @@ transformation = transforms.Compose([
     transforms.ToTensor(),
     transforms.ConvertImageDtype(torch.float),
     transforms.Resize(image_size),
-    transforms.CenterCrop(image_size),
-    transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+    transforms.CenterCrop(image_size)
+    # transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
 ])
-
 
 # N_tasks = 5
 # n_classes = 5
 # k_samples = 5
 # imagesize = 64
 # torch.set_default_dtype(torch.float)
+import sys
 
 
 def accuracy(predictions, targets):
     predictions = predictions.argmax(dim=1).view(targets.shape)
-    # print(targets)
+    # print(predictions, targets)
+    # sys.exit()
     return (predictions == targets).sum().float() / targets.size(0)
 
 
@@ -48,7 +49,6 @@ def fast_adapt(batch, learner, loss, adaptation_steps, shots, ways, device):
 
     # Separate data into adaptation/evalutation sets
     adaptation_indices = np.zeros(data.size(0), dtype=bool)
-    # adaptation_indices[np.arange(int(len(adaptation_indices) / 2)) * 2] = True
     adaptation_indices[np.arange(int(len(adaptation_indices) / 2)) * 2] = True
     evaluation_indices = torch.from_numpy(~adaptation_indices)
     adaptation_indices = torch.from_numpy(adaptation_indices)
@@ -57,9 +57,6 @@ def fast_adapt(batch, learner, loss, adaptation_steps, shots, ways, device):
 
     # Adapt the model
     for step in range(adaptation_steps):
-        # print(type(adaptation_data.data))
-        # print(type(adaptation_labels.data))
-        # test = torch.rand(adaptation_labels.shape) * 100
         train_error = loss(learner(adaptation_data), adaptation_labels)
         learner.adapt(train_error)
 
@@ -94,18 +91,20 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
     * **dropblock_dropout** (float, *optional*, default=0.1) - Dropout rate for the residual layers.
     * **dropblock_size** (int, *optional*, default=5) - Size of drop blocks.
     """
-    model = l2l.vision.models.ResNet12(ways * tasks, wider=False, hidden_size=8192)
+    model = l2l.vision.models.ResNet12(ways, hidden_size=2560)
+    # model = l2l.vision.models.ResNet12(ways, hidden_size=2560)
     model.to(device, dtype=torch.float)
 
-    maml = l2l.algorithms.MAML(model, lr=fast_lr, first_order=False, allow_nograd=True)
+    maml = l2l.algorithms.MAML(model, lr=fast_lr, first_order=False)
     opt = optim.Adam(maml.parameters(), meta_lr)
     loss = nn.CrossEntropyLoss(reduction='mean')
     # dataset = CustomDataset(tasks=3, classes=15, transform=transformation, image_size=image_size)
-    dataset = CustomDataset(tasks=tasks, classes=ways, samples_per_class=10, img_path=dataroot,
+    dataset = CustomDataset(tasks=tasks, classes=ways, samples_per_class=shots, img_path=dataroot,
                             label_path=labels_path, transform=transformation, image_size=image_size)
 
     # meta_batch_size = shots * ways * tasks
-    for iteration in range(num_iterations):
+    # sampler = CustomSampler(dataset)
+    for iteration in tqdm(range(num_iterations)):
         opt.zero_grad()
         meta_train_error = 0.0
         meta_train_accuracy = 0.0
@@ -114,7 +113,9 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
 
         for task in range(meta_batch_size):
             sampler = CustomSampler(dataset)
+            # sampler = CustomBenchmarkSampler(dataset)
             # sampler = CustomBenchmarkSampler(dataset, 2 * shots, ways, 2 * shots, ways)
+            # sampler = CustomSampler(dataset)
 
             # Compute meta-training loss
             learner = maml.clone()
@@ -133,11 +134,11 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
 
         # Print some metrics
         # print('\n')
-        # print('Iteration', iteration)
-        # print('Meta Train Error', meta_train_error / meta_batch_size)
-        # print('Meta Train Accuracy', meta_train_accuracy / meta_batch_size)
-        # print('Meta Valid Error', meta_valid_error / meta_batch_size)
-        # print('Meta Valid Accuracy', meta_valid_accuracy / meta_batch_size)
+        print('Iteration', iteration)
+        print('Meta Train Error', meta_train_error / meta_batch_size)
+        print('Meta Train Accuracy', meta_train_accuracy / meta_batch_size)
+        print('Meta Valid Error', meta_valid_error / meta_batch_size)
+        print('Meta Valid Accuracy', meta_valid_accuracy / meta_batch_size)
         # print('\n')
 
         # Average the accumulated gradients and optimize
@@ -147,13 +148,13 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
 
     meta_test_error = 0.0
     meta_test_accuracy = 0.0
-    dataset = CustomDataset(tasks=tasks, classes=ways, samples_per_class=10, img_path=dataroot,
+    dataset = CustomDataset(tasks=tasks, classes=ways, samples_per_class=shots, img_path=dataroot,
                             label_path=labels_path, transform=transformation, image_size=image_size)
     for task in range(meta_batch_size):
         # Compute meta-testing loss
 
+        # sampler = CustomBenchmarkSampler(dataset)
         sampler = CustomSampler(dataset)
-        # sampler = CustomBenchmarkSampler(dataset, 2 * shots, ways, 2 * shots, ways)
 
         learner = maml.clone()
         evaluation_error, evaluation_accuracy = \
