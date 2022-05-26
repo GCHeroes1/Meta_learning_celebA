@@ -19,7 +19,6 @@ data_root = r"C:\Users\Rajesh\Documents\Pycharm Projects\Y4_COMP0138\Datasets\ce
 # Path to folder with the dataset
 dataset_folder = f'{data_root}'
 # URL for the CelebA dataset
-# url = 'https://drive.google.com/uc?id=1cNIac61PSA_LqDFYFUeyaQYekYPc75NH'
 url = 'https://drive.google.com/drive/folders/0B7EVK8r0v71pTUZsaXdaSnZBZzg'
 # Path to download the dataset to
 download_path = f'{data_root}/img_align_celeba.zip'

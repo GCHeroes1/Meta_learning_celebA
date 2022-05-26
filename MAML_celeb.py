@@ -5,7 +5,7 @@ import torchvision.transforms as transforms
 import learn2learn as l2l
 from line_profiler_pycharm import profile
 from tqdm import tqdm
-from celebA_dataset_creation import CustomDataset, CustomLoader, CustomSampler, CustomBenchmarkSampler
+from celebA_dataset_creation import CustomDataset, CustomSampler
 from torch import nn, optim
 
 workers = 4
@@ -41,7 +41,7 @@ def accuracy(predictions, targets):
 
 
 @profile
-def fast_adapt(batch, learner, loss, adaptation_steps, shots, ways, device):
+def fast_adapt(batch, learner, loss, adaptation_steps, device):
     # batch = batch.float()
     # print(batch)
     data, labels = batch
@@ -70,7 +70,7 @@ def fast_adapt(batch, learner, loss, adaptation_steps, shots, ways, device):
 # rajesh, you need to compare the parameters for main, your meta batch size is whats determining the accuracy and shit, it seems very wrong
 @profile
 def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, adaptation_steps=1, num_iterations=60000,
-         cuda=True, seed=42):
+         cuda=True, seed=42, global_labels=False):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -95,7 +95,7 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
     # model = l2l.vision.models.ResNet12(ways, hidden_size=2560)
     model.to(device, dtype=torch.float)
 
-    maml = l2l.algorithms.MAML(model, lr=fast_lr, first_order=False)
+    maml = l2l.algorithms.MAML(model, lr=fast_lr, first_order=False, allow_nograd=True)
     opt = optim.Adam(maml.parameters(), meta_lr)
     loss = nn.CrossEntropyLoss(reduction='mean')
     # dataset = CustomDataset(tasks=3, classes=15, transform=transformation, image_size=image_size)
@@ -104,6 +104,9 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
 
     # meta_batch_size = shots * ways * tasks
     # sampler = CustomSampler(dataset)
+
+    data_plot = []
+
     for iteration in tqdm(range(num_iterations)):
         opt.zero_grad()
         meta_train_error = 0.0
@@ -112,33 +115,35 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
         meta_valid_accuracy = 0.0
 
         for task in range(meta_batch_size):
-            sampler = CustomSampler(dataset)
-            # sampler = CustomBenchmarkSampler(dataset)
-            # sampler = CustomBenchmarkSampler(dataset, 2 * shots, ways, 2 * shots, ways)
-            # sampler = CustomSampler(dataset)
-
             # Compute meta-training loss
+            sampler = CustomSampler(dataset, global_labels=global_labels)
             learner = maml.clone()
             evaluation_error, evaluation_accuracy = \
-                fast_adapt(sampler.train_sampler(), learner, loss, adaptation_steps, shots, ways, device)
+                fast_adapt(sampler.train_sampler(), learner, loss, adaptation_steps, device)
             evaluation_error.backward()
             meta_train_error += evaluation_error.item()
             meta_train_accuracy += evaluation_accuracy.item()
 
             # Compute meta-validation loss
+            sampler = CustomSampler(dataset, global_labels=global_labels)
             learner = maml.clone()
             evaluation_error, evaluation_accuracy = \
-                fast_adapt(sampler.val_sampler(), learner, loss, adaptation_steps, shots, ways, device)
+                fast_adapt(sampler.val_sampler(), learner, loss, adaptation_steps, device)
             meta_valid_error += evaluation_error.item()
             meta_valid_accuracy += evaluation_accuracy.item()
 
         # Print some metrics
         # print('\n')
-        print('Iteration', iteration)
-        print('Meta Train Error', meta_train_error / meta_batch_size)
-        print('Meta Train Accuracy', meta_train_accuracy / meta_batch_size)
-        print('Meta Valid Error', meta_valid_error / meta_batch_size)
-        print('Meta Valid Accuracy', meta_valid_accuracy / meta_batch_size)
+        # print('Iteration', iteration)
+        train_err = meta_train_error / meta_batch_size
+        train_acc = meta_train_accuracy / meta_batch_size
+        val_err = meta_valid_error / meta_batch_size
+        val_acc = meta_valid_accuracy / meta_batch_size
+        # print('Meta Train Error', train_err)
+        # print('Meta Train Accuracy', train_acc)
+        # print('Meta Valid Error', val_err)
+        # print('Meta Valid Accuracy', val_acc)
+        data_plot.append((iteration, train_err, train_acc, val_err, val_acc))
         # print('\n')
 
         # Average the accumulated gradients and optimize
@@ -152,18 +157,17 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
                             label_path=labels_path, transform=transformation, image_size=image_size)
     for task in range(meta_batch_size):
         # Compute meta-testing loss
-
-        # sampler = CustomBenchmarkSampler(dataset)
-        sampler = CustomSampler(dataset)
-
+        sampler = CustomSampler(dataset, global_labels=global_labels)
         learner = maml.clone()
         evaluation_error, evaluation_accuracy = \
-            fast_adapt(sampler.test_sampler(), learner, loss, adaptation_steps, shots, ways, device)
+            fast_adapt(sampler.test_sampler(), learner, loss, adaptation_steps, device)
         meta_test_error += evaluation_error.item()
         meta_test_accuracy += evaluation_accuracy.item()
-    # print('Meta Test Error', meta_test_error / meta_batch_size)
-    # print('Meta Test Accuracy', meta_test_accuracy / meta_batch_size)
-    return meta_test_accuracy / meta_batch_size
+    test_err = meta_test_error / meta_batch_size
+    test_acc = meta_test_accuracy / meta_batch_size
+    print('Meta Test Error', test_err)
+    print('Meta Test Accuracy', test_acc)
+    return data_plot, test_acc
 
 
 if __name__ == '__main__':
@@ -181,5 +185,5 @@ if __name__ == '__main__':
     for i in range(10):
         print('Iteration', i + 1)
         test_accuracy += main(tasks=num_tasks, ways=ways_num_classes_per_task * num_tasks, meta_batch_size=16,
-                              shots=shots_num_samples_per_class, num_iterations=10)
+                              shots=shots_num_samples_per_class, num_iterations=10, global_labels=False)
     print(test_accuracy / 10)

@@ -2,8 +2,15 @@ import MAML_celeb
 import MAML_omniglot
 import sys
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+import os
+import csv
 
 if __name__ == '__main__':
+    if not os.path.exists('./plots'):
+        os.makedirs('./plots')
+    if not os.path.exists('./results'):
+        os.makedirs('./results')
     """
     :param train_ways: number of classes per training batch
     :param train_samples: number of samples per training batch
@@ -13,10 +20,11 @@ if __name__ == '__main__':
     """
     test_accuracy_celeb = 0
     num_tasks = 10
-    ways_num_classes_per_task = 10
-    shots_num_samples_per_class = 10
+    ways_num_classes_per_task = 500
+    shots_num_samples_per_class = 5
     iterations = 10
-    batch_size = shots_num_samples_per_class * ways_num_classes_per_task
+    batch_size = 512
+    global_labels = True
     # # meta_lrs = [0.006, 0.005, 0.007]
     # # fast_lrs = [0.4, 0.5, 0.6]
     # # meta_lrs = [0.006, 0.005, 0.007]
@@ -59,11 +67,46 @@ if __name__ == '__main__':
     # #
     # # # celeb accuracy 0.07312500132247805
     # # # omniglot accuracy 0.11666667461395264
-    accuracy = 0
-    for i in range(1):
-        accuracy += MAML_celeb.main(tasks=num_tasks, ways=ways_num_classes_per_task * num_tasks,
-                                    meta_batch_size=50,
-                                    shots=shots_num_samples_per_class, num_iterations=2000)
-    print(accuracy / 1)
-    # 0.08400000125169754 with 3 tasks, 5 samples each
-    # 0.29 was the best it did, even when trying to force overfitting
+    data_plot, accuracy = MAML_celeb.main(tasks=num_tasks, ways=ways_num_classes_per_task * num_tasks,
+                                          meta_batch_size=batch_size, shots=shots_num_samples_per_class,
+                                          num_iterations=iterations, global_labels=global_labels)
+    with open(
+            f"./results/{num_tasks}_{ways_num_classes_per_task}_{shots_num_samples_per_class}_"
+            f"{iterations}_{batch_size}_{str(global_labels)}",
+            "w+") as my_csv:
+        csvWriter = csv.writer(my_csv, delimiter=',')
+        csvWriter.writerows(data_plot)
+        # csvWriter.writerows(accuracy)
+    print("final accuracy", accuracy)
+
+    iteration_list = [n[0] for n in data_plot]
+    train_err = [m[1] for m in data_plot]
+    train_acc = [z[2] for z in data_plot]
+    val_err = [x[3] for x in data_plot]
+    val_acc = [c[4] for c in data_plot]
+
+    plt.plot(iteration_list, train_err, color='blue', label='Training Error')
+    plt.plot(iteration_list, val_err, color='orange', label='Validation Error')
+    plt.title(
+        f"train and val error for {num_tasks} tasks with {ways_num_classes_per_task} classes each, "
+        f"\nglobal labels are {global_labels}, batch size is {batch_size}", horizontalalignment='center')
+    plt.xlabel("iteration")
+    plt.ylabel("training and val error")
+    plt.legend()
+    plt.savefig(
+        f'./plots/tasks_{str(num_tasks)}_classes_per_{str(ways_num_classes_per_task)}_err_{batch_size}_{iterations}_{global_labels}.png')
+    plt.show()
+    plt.clf()
+
+    plt.plot(iteration_list, train_acc, color='navy', label='Training Accuracy')
+    plt.plot(iteration_list, val_acc, color='goldenrod', label='Validation Error')
+    plt.title(
+        f"train and val acc for {num_tasks} tasks with {ways_num_classes_per_task} classes each, "
+        f"\nglobal labels are {global_labels}, batch size is {batch_size}", horizontalalignment='center')
+    plt.xlabel("iteration")
+    plt.ylabel("training and val acc")
+    plt.legend()
+    plt.savefig(
+        f'./plots/tasks_{str(num_tasks)}_classes_per_{str(ways_num_classes_per_task)}_acc_{batch_size}_{iterations}_{global_labels}.png')
+    plt.show()
+    plt.clf()
