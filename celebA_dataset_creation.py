@@ -365,8 +365,8 @@ if __name__ == '__main__':
     ])
     test_accuracy_celeb = 0
     num_tasks = 10
-    ways_num_classes_per_task = 500
-    shots_num_samples_per_class = 20
+    ways = 500
+    shots = 20
     iterations = 1
     batch_size = 16
 

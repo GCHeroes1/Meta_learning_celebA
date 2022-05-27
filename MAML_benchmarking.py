@@ -145,13 +145,12 @@ def main(taskset, tasks, ways=5, shots=1, meta_lr=0.003, fast_lr=0.5, meta_batch
 
 if __name__ == '__main__':
     # main()
-    test_accuracy = 0
+    # test_accuracy = 0
     num_tasks = 5
-    ways_num_classes_per_task = 5
-    shots_num_samples_per_class = 1
-    for i in range(10):
-        print('Iteration', i + 1)
-        test_accuracy += main(taskset="omniglot", tasks=num_tasks, ways=ways_num_classes_per_task * num_tasks,
-                              meta_batch_size=16,
-                              shots=shots_num_samples_per_class, num_iterations=10)
-    print(test_accuracy / 10)
+    ways = 5
+    shots = 1
+    # for i in range(10):
+    #     print('Iteration', i + 1)
+    test_accuracy = main(taskset="omniglot", tasks=num_tasks, ways=ways * num_tasks,
+                         meta_batch_size=16, shots=shots, num_iterations=10)
+    # print(test_accuracy / 10)
