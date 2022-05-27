@@ -1,83 +1,24 @@
 import MAML_celeb
-import MAML_omniglot
+import MAML_benchmarking
 import sys
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import os
 import csv
 
-if __name__ == '__main__':
-    if not os.path.exists('./plots'):
-        os.makedirs('./plots')
-    if not os.path.exists('./results'):
-        os.makedirs('./results')
-    """
-    :param train_ways: number of classes per training batch
-    :param train_samples: number of samples per training batch
-    :param test_ways: number of classes per test/val batch
-    :param test_samples: number of samples per test/val batch
-    :param num_tasks: number of tasks in each dataset
-    """
-    test_accuracy_celeb = 0
-    num_tasks = 10
-    ways_num_classes_per_task = 500
-    shots_num_samples_per_class = 5
-    iterations = 10
-    batch_size = 512
-    global_labels = True
-    # # meta_lrs = [0.006, 0.005, 0.007]
-    # # fast_lrs = [0.4, 0.5, 0.6]
-    # # meta_lrs = [0.006, 0.005, 0.007]
-    # # fast_lrs = [0.65, 0.7, 0.75]
-    # meta_lrs = [0.005]
-    # fast_lrs = [0.7]
-    # # (0.09750000145286322, 0.005, 0.7)
-    # # omniglot accuracy 0.10416667349636555
-    #
-    # # (0.04500000067055225, 0.006, 0.75)
-    #
-    # # (0.03833333542570472, 0.005, 0.7, 3, 5, 10) <- benchmark, celeb
-    # # (0.05000000074505806, 0.005, 0.7, 3, 5, 10) <- no global labels
-    # # omniglot -> 0.1208333414979279
-    # accuracystats = []
-    # for meta_lr in meta_lrs:
-    #     for fast_lr in fast_lrs:
-    #         test_accuracy_celeb = 0
-    #         for i in tqdm(range(5)):
-    #             # print('Iteration', i + 1)
-    #             test_accuracy_celeb += MAML_celeb.main(tasks=num_tasks, ways=ways_num_classes_per_task * num_tasks,
-    #                                                    meta_batch_size=batch_size, meta_lr=meta_lr, fast_lr=fast_lr,
-    #                                                    shots=shots_num_samples_per_class, num_iterations=iterations)
-    #         print("meta_lr: ", meta_lr, "fast_lr: ", fast_lr, "celeb accuracy: ", test_accuracy_celeb / 5)
-    #         accuracystats.append(
-    #             (test_accuracy_celeb / 5, meta_lr, fast_lr, num_tasks, ways_num_classes_per_task, iterations))
-    # maximum_acc = max(accuracystats, key=lambda i: i[0])
-    # print(maximum_acc)
-    #
-    # test_accuracy_omniglot = 0
-    # for i in tqdm(range(1)):
-    #     # print('Iteration', i + 1)
-    #     test_accuracy_omniglot += MAML_omniglot.main(tasks=num_tasks, ways=ways_num_classes_per_task * num_tasks,
-    #                                                  meta_batch_size=100,
-    #                                                  shots=shots_num_samples_per_class, num_iterations=1000)
 
-    # # print("celeb accuracy ", test_accuracy_celeb / 10)
-    # #
-    # print("omniglot accuracy ", test_accuracy_omniglot / 1)
-    # #
-    # # # celeb accuracy 0.07312500132247805
-    # # # omniglot accuracy 0.11666667461395264
+def celebA_MAML(num_tasks, ways_num_classes_per_task, shots_num_samples_per_class, iterations, batch_size,
+                global_labels):
     data_plot, accuracy = MAML_celeb.main(tasks=num_tasks, ways=ways_num_classes_per_task * num_tasks,
                                           meta_batch_size=batch_size, shots=shots_num_samples_per_class,
                                           num_iterations=iterations, global_labels=global_labels)
     with open(
-            f"./results/{num_tasks}_{ways_num_classes_per_task}_{shots_num_samples_per_class}_"
+            f"./results/MAML/celebA/{num_tasks}_{ways_num_classes_per_task}_{shots_num_samples_per_class}_"
             f"{iterations}_{batch_size}_{str(global_labels)}",
-            "w+") as my_csv:
+            "w") as my_csv:
         csvWriter = csv.writer(my_csv, delimiter=',')
         csvWriter.writerows(data_plot)
-        # csvWriter.writerows(accuracy)
-    print("final accuracy", accuracy)
+    print("final accuracy for celebA", accuracy)
 
     iteration_list = [n[0] for n in data_plot]
     train_err = [m[1] for m in data_plot]
@@ -94,7 +35,8 @@ if __name__ == '__main__':
     plt.ylabel("training and val error")
     plt.legend()
     plt.savefig(
-        f'./plots/tasks_{str(num_tasks)}_classes_per_{str(ways_num_classes_per_task)}_err_{batch_size}_{iterations}_{global_labels}.png')
+        f'./plots/MAML/celebA/tasks_{str(num_tasks)}_classes_per_{str(ways_num_classes_per_task)}_err_{batch_size}_'
+        f'{iterations}_{global_labels}.png')
     plt.show()
     plt.clf()
 
@@ -107,6 +49,119 @@ if __name__ == '__main__':
     plt.ylabel("training and val acc")
     plt.legend()
     plt.savefig(
-        f'./plots/tasks_{str(num_tasks)}_classes_per_{str(ways_num_classes_per_task)}_acc_{batch_size}_{iterations}_{global_labels}.png')
+        f'./plots/MAML/celebA/tasks_{str(num_tasks)}_classes_per_{str(ways_num_classes_per_task)}_acc_{batch_size}_'
+        f'{iterations}_{global_labels}.png')
     plt.show()
     plt.clf()
+
+
+def tasksets_MAML(taskset, num_tasks, ways_num_classes_per_task, shots_num_samples_per_class, iterations, batch_size):
+    data_plot, accuracy = MAML_benchmarking.main(taskset=taskset, tasks=num_tasks, ways=ways_num_classes_per_task,
+                                                 meta_batch_size=batch_size, shots=shots_num_samples_per_class,
+                                                 num_iterations=iterations)
+
+    with open(
+            f"./results/MAML/{taskset}/{num_tasks}_{ways_num_classes_per_task}_{shots_num_samples_per_class}_"
+            f"{iterations}_{batch_size}",
+            "w") as my_csv:
+        csvWriter = csv.writer(my_csv, delimiter=',')
+        csvWriter.writerows(data_plot)
+    print(f"final accuracy for {taskset}", accuracy)
+
+    iteration_list = [n[0] for n in data_plot]
+    train_err = [m[1] for m in data_plot]
+    train_acc = [z[2] for z in data_plot]
+    val_err = [x[3] for x in data_plot]
+    val_acc = [c[4] for c in data_plot]
+
+    plt.plot(iteration_list, train_err, color='blue', label='Training Error')
+    plt.plot(iteration_list, val_err, color='orange', label='Validation Error')
+    plt.title(
+        f"the {taskset} dataset, train and val error for {num_tasks} tasks with {ways_num_classes_per_task} classes "
+        f"\neach, batch size is {batch_size}, over {iterations}", horizontalalignment='center')
+    plt.xlabel("iteration")
+    plt.ylabel("training and val error")
+    plt.legend()
+    plt.savefig(
+        f'./plots/MAML/{taskset}/tasks_{str(num_tasks)}_classes_per_{str(ways_num_classes_per_task)}_err_{batch_size}_'
+        f'{iterations}.png')
+    plt.show()
+    plt.clf()
+
+    plt.plot(iteration_list, train_acc, color='navy', label='Training Accuracy')
+    plt.plot(iteration_list, val_acc, color='goldenrod', label='Validation Error')
+    plt.title(
+        f"the {taskset} dataset, train and val acc for {num_tasks} tasks with {ways_num_classes_per_task} classes "
+        f"\neach, batch size is {batch_size}, over {iterations}", horizontalalignment='center')
+    plt.xlabel("iteration")
+    plt.ylabel("training and val acc")
+    plt.legend()
+    plt.savefig(
+        f'./plots/MAML/{taskset}/tasks_{str(num_tasks)}_classes_per_{str(ways_num_classes_per_task)}_acc_{batch_size}_'
+        f'{iterations}.png')
+    plt.show()
+    plt.clf()
+
+
+if __name__ == '__main__':
+    import sys
+
+    algorithms = ["MAML", "GBML", "Meta-SGD"]
+    tasksets = ["omniglot", "mini-imagenet", "fc100", "celebA"]
+    for algorithm in algorithms:
+        for taskset in tasksets:
+
+            if not os.path.exists(f'./plots/{algorithm}/{taskset}'):
+                os.makedirs(f'./plots/{algorithm}/{taskset}')
+            if not os.path.exists(f'./results/{algorithm}/{taskset}'):
+                os.makedirs(f'./results/{algorithm}/{taskset}')
+    sys.exit()
+    # test_accuracy_celeb = 0
+    # num_tasks = 10
+    # ways_num_classes_per_task = 500
+    # shots_num_samples_per_class = 1
+    # iterations = 10
+    # batch_size = 64
+    # global_labels = True
+
+    # remember youre only doing 500 classes because it wont fit on your GPU
+    # celebA_MAML(num_tasks=10,
+    #             ways_num_classes_per_task=500,
+    #             shots_num_samples_per_class=5,
+    #             iterations=20,
+    #             batch_size=256,
+    #             global_labels=True)
+
+    # tasksets = ["omniglot", "mini-imagenet", "fc100"]
+    tasksets = ["mini-imagenet"]
+    for taskset in tasksets:
+        if taskset == "omniglot":
+            tasksets_MAML(taskset="omniglot", num_tasks=10,
+                          ways_num_classes_per_task=100,
+                          shots_num_samples_per_class=1,
+                          iterations=1500,
+                          batch_size=32)
+            # 3hr11 for 1500 epoch
+        elif taskset == "mini-imagenet":
+            tasksets_MAML(taskset="mini-imagenet", num_tasks=10,
+                          ways_num_classes_per_task=15,
+                          shots_num_samples_per_class=5,
+                          iterations=1500,
+                          batch_size=32)
+            # 2hr2 for 1500 epoch
+        elif taskset == "fc100":
+            tasksets_MAML(taskset="fc100", num_tasks=1000,
+                          ways_num_classes_per_task=15,
+                          shots_num_samples_per_class=1,
+                          iterations=2000,
+                          batch_size=32)
+            # 57m for 5000 epoch
+
+        # elif taskset == "cifarfs":
+        #     tasksets_MAML(taskset="cifarfs", num_tasks=10,
+        #                   ways_num_classes_per_task=15,
+        #                   shots_num_samples_per_class=1,
+        #                   iterations=5000,
+        #                   batch_size=32)
+        #     # 2 minutes for 200 epochs
+        #     # 12 minutes for 1000 epochs

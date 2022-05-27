@@ -19,7 +19,6 @@ from PIL import Image
 dataroot = r"./CelebA-20220516T115258Z-001/CelebA/Img/img_align_celeba/img_align_celeba"
 labels_path = r"./CelebA-20220516T115258Z-001/CelebA/Anno/identity_CelebA.txt"
 device = torch.device('cpu')
-
 if torch.cuda.is_available():
     device = torch.device('cuda')
 
@@ -99,72 +98,73 @@ class CustomDataset(Dataset):
             img_tensor = self.transform(img_tensor)
         return img_tensor, class_id
 
-    # class CustomLoader:
-    #     def segment_dataset(self):
-    #         for task in range(self.dataset.tasks):
-    #             indexes = np.arange(task * self.number_of_samples, (task + 1) * self.number_of_samples)
-    #             self.train_indexes.append(np.random.choice(indexes, self.train_size, replace=False))
-    #             indexes = np.delete(indexes, np.where(np.isin(indexes, self.train_indexes)))
-    #             self.val_indexes.append(np.random.choice(indexes, self.val_size, replace=False))
-    #             indexes = np.delete(indexes, np.where(np.isin(indexes, self.val_indexes)))
-    #             self.test_indexes.append(np.random.choice(indexes, self.test_size, replace=False))
-    #             # indexes = np.delete(indexes, np.where(np.isin(indexes, self.test_indexes)))
-    #
-    #     def __init__(self, celeb_dataset):
-    #         self.dataset = celeb_dataset
-    #         self.number_of_samples = self.dataset.classes * self.dataset.samples_per_class
-    #         self.test_size = int(np.floor(self.number_of_samples / self.dataset.class_size))
-    #         self.train_size = int((self.number_of_samples - self.test_size) * .8)
-    #         self.val_size = self.number_of_samples - self.test_size - self.train_size
-    #         self.train_indexes = []
-    #         self.val_indexes = []
-    #         self.test_indexes = []
-    #         self.segment_dataset()
-    #         self.task_train = 0
-    #         self.task_val = 0
-    #         self.task_test = 0
-    #
-    #     def train_loader(self, current_task, batch_size=4):
-    #         train_subset = Subset(self.dataset, self.train_indexes[current_task])
-    #         train_loader = DataLoader(train_subset, shuffle=True, batch_size=batch_size)
-    #         return train_loader
-    #
-    #     def val_loader(self, current_task, batch_size=4):
-    #         val_subset = Subset(self.dataset, self.val_indexes[current_task])
-    #         val_loader = DataLoader(val_subset, shuffle=True, batch_size=batch_size)
-    #         return val_loader
-    #
-    #     def test_loader(self, current_task, batch_size=4):
-    #         test_subset = Subset(self.dataset, self.test_indexes[current_task])
-    #         test_loader = DataLoader(test_subset, shuffle=False, batch_size=batch_size)
-    #         return test_loader
-    #
-    #     def train_sampler(self, batch_size=4):
-    #         if self.dataset.tasks >= self.task_train:
-    #             train_subset = Subset(self.dataset, self.train_indexes[self.task_train])
-    #             train_loader = DataLoader(train_subset, shuffle=True, batch_size=batch_size)
-    #             next_sample = next(iter(train_loader))
-    #             if train_loader.__len__() == 0:
-    #                 self.task_train += 1
-    #             return next_sample
 
-    def val_sampler(self, batch_size=4):
-        if self.dataset.tasks >= self.task_val:
-            val_subset = Subset(self.dataset, self.val_indexes[self.task_val])
-            val_loader = DataLoader(val_subset, shuffle=True, batch_size=batch_size)
-            next_sample = next(iter(val_loader))
-            if val_loader.__len__() == 0:
-                self.task_val += 1
-            return next_sample
-
-    def test_sampler(self, batch_size=4):
-        if self.dataset.tasks >= self.task_test:
-            test_subset = Subset(self.dataset, self.test_indexes[self.task_test])
-            test_loader = DataLoader(test_subset, shuffle=True, batch_size=batch_size)
-            next_sample = next(iter(test_loader))
-            if test_loader.__len__() == 0:
-                self.task_test += 1
-            return next_sample
+# class CustomLoader:
+#     def segment_dataset(self):
+#         for task in range(self.dataset.tasks):
+#             indexes = np.arange(task * self.number_of_samples, (task + 1) * self.number_of_samples)
+#             self.train_indexes.append(np.random.choice(indexes, self.train_size, replace=False))
+#             indexes = np.delete(indexes, np.where(np.isin(indexes, self.train_indexes)))
+#             self.val_indexes.append(np.random.choice(indexes, self.val_size, replace=False))
+#             indexes = np.delete(indexes, np.where(np.isin(indexes, self.val_indexes)))
+#             self.test_indexes.append(np.random.choice(indexes, self.test_size, replace=False))
+#             # indexes = np.delete(indexes, np.where(np.isin(indexes, self.test_indexes)))
+#
+#     def __init__(self, celeb_dataset):
+#         self.dataset = celeb_dataset
+#         self.number_of_samples = self.dataset.classes * self.dataset.samples_per_class
+#         self.test_size = int(np.floor(self.number_of_samples / self.dataset.class_size))
+#         self.train_size = int((self.number_of_samples - self.test_size) * .8)
+#         self.val_size = self.number_of_samples - self.test_size - self.train_size
+#         self.train_indexes = []
+#         self.val_indexes = []
+#         self.test_indexes = []
+#         self.segment_dataset()
+#         self.task_train = 0
+#         self.task_val = 0
+#         self.task_test = 0
+#
+#     def train_loader(self, current_task, batch_size=4):
+#         train_subset = Subset(self.dataset, self.train_indexes[current_task])
+#         train_loader = DataLoader(train_subset, shuffle=True, batch_size=batch_size)
+#         return train_loader
+#
+#     def val_loader(self, current_task, batch_size=4):
+#         val_subset = Subset(self.dataset, self.val_indexes[current_task])
+#         val_loader = DataLoader(val_subset, shuffle=True, batch_size=batch_size)
+#         return val_loader
+#
+#     def test_loader(self, current_task, batch_size=4):
+#         test_subset = Subset(self.dataset, self.test_indexes[current_task])
+#         test_loader = DataLoader(test_subset, shuffle=False, batch_size=batch_size)
+#         return test_loader
+#
+#     def train_sampler(self, batch_size=4):
+#         if self.dataset.tasks >= self.task_train:
+#             train_subset = Subset(self.dataset, self.train_indexes[self.task_train])
+#             train_loader = DataLoader(train_subset, shuffle=True, batch_size=batch_size)
+#             next_sample = next(iter(train_loader))
+#             if train_loader.__len__() == 0:
+#                 self.task_train += 1
+#             return next_sample
+#
+# def val_sampler(self, batch_size=4):
+#     if self.dataset.tasks >= self.task_val:
+#         val_subset = Subset(self.dataset, self.val_indexes[self.task_val])
+#         val_loader = DataLoader(val_subset, shuffle=True, batch_size=batch_size)
+#         next_sample = next(iter(val_loader))
+#         if val_loader.__len__() == 0:
+#             self.task_val += 1
+#         return next_sample
+#
+# def test_sampler(self, batch_size=4):
+#     if self.dataset.tasks >= self.task_test:
+#         test_subset = Subset(self.dataset, self.test_indexes[self.task_test])
+#         test_loader = DataLoader(test_subset, shuffle=True, batch_size=batch_size)
+#         next_sample = next(iter(test_loader))
+#         if test_loader.__len__() == 0:
+#             self.task_test += 1
+#         return next_sample
 
 
 def extract(nested_list, index):

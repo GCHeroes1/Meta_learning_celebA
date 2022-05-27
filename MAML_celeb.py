@@ -40,7 +40,6 @@ def accuracy(predictions, targets):
     return (predictions == targets).sum().float() / targets.size(0)
 
 
-@profile
 def fast_adapt(batch, learner, loss, adaptation_steps, device):
     # batch = batch.float()
     # print(batch)
@@ -67,8 +66,6 @@ def fast_adapt(batch, learner, loss, adaptation_steps, device):
     return valid_error, valid_accuracy
 
 
-# rajesh, you need to compare the parameters for main, your meta batch size is whats determining the accuracy and shit, it seems very wrong
-@profile
 def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, adaptation_steps=1, num_iterations=60000,
          cuda=True, seed=42, global_labels=False):
     random.seed(seed)
@@ -101,9 +98,6 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
     # dataset = CustomDataset(tasks=3, classes=15, transform=transformation, image_size=image_size)
     dataset = CustomDataset(tasks=tasks, classes=ways, samples_per_class=shots, img_path=dataroot,
                             label_path=labels_path, transform=transformation, image_size=image_size)
-
-    # meta_batch_size = shots * ways * tasks
-    # sampler = CustomSampler(dataset)
 
     data_plot = []
 

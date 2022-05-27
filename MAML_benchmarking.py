@@ -8,9 +8,10 @@ Demonstrates how to:
 import random
 import numpy as np
 import torch
-import learn2learn as l2l
-
+from tqdm import tqdm
 from torch import nn, optim
+import learn2learn as l2l
+from CifarCNN import CifarCNN
 
 
 def accuracy(predictions, targets):
@@ -44,7 +45,8 @@ def fast_adapt(batch, learner, loss, adaptation_steps, shots, ways, device):
     return valid_error, valid_accuracy
 
 
-def main(tasks, ways=5, shots=1, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, adaptation_steps=1, num_iterations=10,
+def main(taskset, tasks, ways=5, shots=1, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, adaptation_steps=1,
+         num_iterations=10,
          cuda=True, seed=42):
     random.seed(seed)
     np.random.seed(seed)
@@ -53,25 +55,35 @@ def main(tasks, ways=5, shots=1, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32,
     if cuda:
         torch.cuda.manual_seed(seed)
         device = torch.device('cuda')
-
     # Load train/validation/test tasksets using the benchmark interface
-    tasksets = l2l.vision.benchmarks.get_tasksets('omniglot',
+    tasksets = l2l.vision.benchmarks.get_tasksets(taskset,
                                                   train_ways=ways,
                                                   train_samples=2 * shots,
                                                   test_ways=ways,
                                                   test_samples=2 * shots,
                                                   num_tasks=tasks,
-                                                  root='./data_',
+                                                  root=f'./data/{taskset}',
                                                   )
 
     # Create model
-    model = l2l.vision.models.OmniglotFC(28 ** 2, ways)
+    if taskset == "omniglot":
+        model = l2l.vision.models.OmniglotFC(28 ** 2, ways)
+    elif taskset == "mini-imagenet":
+        model = l2l.vision.models.MiniImagenetCNN(ways)
+    elif taskset == "fc100":
+        model = CifarCNN(output_size=ways)
+    else:
+        model = l2l.vision.models.ResNet12(ways)
+
     model.to(device)
     maml = l2l.algorithms.MAML(model, lr=fast_lr, first_order=False)
+    maml.to(device)
     opt = optim.Adam(maml.parameters(), meta_lr)
     loss = nn.CrossEntropyLoss(reduction='mean')
 
-    for iteration in range(num_iterations):
+    data_plot = []
+
+    for iteration in tqdm(range(num_iterations)):
         opt.zero_grad()
         meta_train_error = 0.0
         meta_train_accuracy = 0.0
@@ -81,38 +93,33 @@ def main(tasks, ways=5, shots=1, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32,
             # Compute meta-training loss
             learner = maml.clone()
             batch = tasksets.train.sample()
-            evaluation_error, evaluation_accuracy = fast_adapt(batch,
-                                                               learner,
-                                                               loss,
-                                                               adaptation_steps,
-                                                               shots,
-                                                               ways,
-                                                               device)
+            evaluation_error, evaluation_accuracy = \
+                fast_adapt(batch, learner, loss, adaptation_steps, shots, ways, device)
             evaluation_error.backward()
             meta_train_error += evaluation_error.item()
             meta_train_accuracy += evaluation_accuracy.item()
 
             # Compute meta-validation loss
             learner = maml.clone()
-            # batch = tasksets.validation.sample()
-            batch = tasksets.train.sample()
-            evaluation_error, evaluation_accuracy = fast_adapt(batch,
-                                                               learner,
-                                                               loss,
-                                                               adaptation_steps,
-                                                               shots,
-                                                               ways,
-                                                               device)
+            batch = tasksets.validation.sample()
+            evaluation_error, evaluation_accuracy = \
+                fast_adapt(batch, learner, loss, adaptation_steps, shots, ways, device)
             meta_valid_error += evaluation_error.item()
             meta_valid_accuracy += evaluation_accuracy.item()
 
         # Print some metrics
         # print('\n')
         # print('Iteration', iteration)
-        # print('Meta Train Error', meta_train_error / meta_batch_size)
-        # print('Meta Train Accuracy', meta_train_accuracy / meta_batch_size)
-        # print('Meta Valid Error', meta_valid_error / meta_batch_size)
-        # print('Meta Valid Accuracy', meta_valid_accuracy / meta_batch_size)
+        train_err = meta_train_error / meta_batch_size
+        train_acc = meta_train_accuracy / meta_batch_size
+        val_err = meta_valid_error / meta_batch_size
+        val_acc = meta_valid_accuracy / meta_batch_size
+        # print('Meta Train Error', train_err)
+        # print('Meta Train Accuracy', train_acc)
+        # print('Meta Valid Error', val_err)
+        # print('Meta Valid Accuracy', val_acc)
+        data_plot.append((iteration, train_err, train_acc, val_err, val_acc))
+        # print('\n')
 
         # Average the accumulated gradients and optimize
         for p in maml.parameters():
@@ -124,20 +131,16 @@ def main(tasks, ways=5, shots=1, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32,
     for task in range(meta_batch_size):
         # Compute meta-testing loss
         learner = maml.clone()
-        # batch = tasksets.test.sample()
-        batch = tasksets.train.sample()
-        evaluation_error, evaluation_accuracy = fast_adapt(batch,
-                                                           learner,
-                                                           loss,
-                                                           adaptation_steps,
-                                                           shots,
-                                                           ways,
-                                                           device)
+        batch = tasksets.test.sample()
+        evaluation_error, evaluation_accuracy = \
+            fast_adapt(batch, learner, loss, adaptation_steps, shots, ways, device)
         meta_test_error += evaluation_error.item()
         meta_test_accuracy += evaluation_accuracy.item()
-    # print('Meta Test Error', meta_test_error / meta_batch_size)
-    # print('Meta Test Accuracy', meta_test_accuracy / meta_batch_size)
-    return meta_test_accuracy / meta_batch_size
+    test_err = meta_test_error / meta_batch_size
+    test_acc = meta_test_accuracy / meta_batch_size
+    print('Meta Test Error', test_err)
+    print('Meta Test Accuracy', test_acc)
+    return data_plot, test_acc
 
 
 if __name__ == '__main__':
@@ -148,6 +151,7 @@ if __name__ == '__main__':
     shots_num_samples_per_class = 1
     for i in range(10):
         print('Iteration', i + 1)
-        test_accuracy += main(tasks=num_tasks, ways=ways_num_classes_per_task * num_tasks, meta_batch_size=16,
+        test_accuracy += main(taskset="omniglot", tasks=num_tasks, ways=ways_num_classes_per_task * num_tasks,
+                              meta_batch_size=16,
                               shots=shots_num_samples_per_class, num_iterations=10)
     print(test_accuracy / 10)

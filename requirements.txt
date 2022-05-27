@@ -7,3 +7,5 @@ opencv-python
 line_profiler_pycharm
 tqdm
 matplotlib
+googledrivedownloader
+gdown
