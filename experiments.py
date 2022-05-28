@@ -17,15 +17,14 @@ def run_experiment(algorithm, taskset, tasks, ways, shots, iterations, batch_siz
         else:
             data_plot, accuracy = MAML_benchmarking.main(taskset, tasks, ways, shots, meta_batch_size=batch_size,
                                                          num_iterations=iterations)
-    if algorithm == "GBML":
+    elif algorithm == "GBML":
         if taskset == "celebA":
-            if taskset == "celebA":
-                data_plot, accuracy = GBML_celeb.main(tasks, ways, shots, meta_batch_size=batch_size,
-                                                      num_iterations=iterations, global_labels=global_labels)
-            else:
-                data_plot, accuracy = GBML_benchmarking.main(taskset, tasks, ways, shots, meta_batch_size=batch_size,
-                                                             num_iterations=iterations)
-    if algorithm == "Meta-SGD":
+            data_plot, accuracy = GBML_celeb.main(tasks, ways, shots, meta_batch_size=batch_size,
+                                                  num_iterations=iterations, global_labels=global_labels)
+        else:
+            data_plot, accuracy = GBML_benchmarking.main(taskset, tasks, ways, shots, meta_batch_size=batch_size,
+                                                         num_iterations=iterations)
+    elif algorithm == "Meta-SGD":
         if taskset == "celebA":
             data_plot, accuracy = Meta_SGD_celeb.main(tasks, ways, shots, meta_batch_size=batch_size,
                                                       num_iterations=iterations, global_labels=global_labels)
@@ -35,6 +34,8 @@ def run_experiment(algorithm, taskset, tasks, ways, shots, iterations, batch_siz
     with open(save_file, "w") as my_csv:
         csvWriter = csv.writer(my_csv, delimiter=',')
         csvWriter.writerows(data_plot)
+
+    print(f"results of {algorithm} with {taskset} saved to {save_file}")
 
 
 if __name__ == '__main__':
@@ -70,7 +71,7 @@ if __name__ == '__main__':
 
     algorithms = ["MAML", "GBML", "Meta-SGD"]
     tasksets = ["omniglot", "mini-imagenet", "fc100", "celebA"]
-    # algorithms = ["MAML"]
+    algorithms = ["GBML", "Meta-SGD"]
     tasksets = ["fc100"]
     for algorithm in algorithms:
         for taskset in tasksets:
