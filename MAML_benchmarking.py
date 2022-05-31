@@ -68,6 +68,10 @@ def main(taskset, tasks, ways=5, shots=1, meta_lr=0.003, fast_lr=0.5, meta_batch
     # Create model
     if taskset == "omniglot":
         model = l2l.vision.models.OmniglotFC(28 ** 2, ways)
+    # elif taskset == "omniglotFC":
+    #     model = l2l.vision.models.OmniglotFC(28 ** 2, ways)
+    # elif taskset == "omniglotCNN":
+    #     model = l2l.vision.models.OmniglotCNN(ways)
     elif taskset == "mini-imagenet":
         model = l2l.vision.models.MiniImagenetCNN(ways)
     elif taskset == "fc100":

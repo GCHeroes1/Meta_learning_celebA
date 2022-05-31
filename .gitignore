@@ -5,6 +5,6 @@
 .idea
 *.pclprof
 *.jpg
-/results/
-/plots/
+/results*/
+/plots*/
 .editorconfig
