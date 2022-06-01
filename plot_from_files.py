@@ -74,13 +74,13 @@ def resave_file(filename, data):
 
 def plotting_averages(filename, data_plot, rolling_average=50):
     algorithm, dataset, num_tasks, ways, shots, iterations, batch_size, global_labels = collect_parameters(filename)
-    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
 
     N = np.arange(len(data_plot))
     avg_train_err, std_train_err, avg_train_acc, std_train_acc, avg_val_err, std_val_err, avg_val_acc, std_val_acc, \
         = calc_avg_std(data_plot, rolling_average)
 
-    save_file = f'./plots/{algorithm}_{dataset}_{str(num_tasks)}_{str(ways)}_{shots}_{batch_size}_{iterations}_{global_labels}'
+    # save_file = f'./plots/{algorithm}_{dataset}_{str(num_tasks)}_{str(ways)}_{shots}_{batch_size}_{iterations}_{global_labels}'
+    save_file = f'./plots_test/{algorithm}_{dataset}_{str(num_tasks)}_{str(ways)}_{shots}_{batch_size}_{iterations}_{global_labels}.png'
     # if dataset == "celebA":
     #     if global_labels == "out":
     #         save_file += "_False"
@@ -90,12 +90,13 @@ def plotting_averages(filename, data_plot, rolling_average=50):
     if os.path.exists(save_file):
         return
 
+    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
     plt.style.use('ggplot')
     time.sleep(0.1)
     title = (
         f"{algorithm}, {dataset} dataset, train and val accuracy & error for {str(int(num_tasks))} tasks with {ways} classes"
         f"\nand {shots} shots, meta batch size is {batch_size}, trained for {iterations} iterations")
-    if not global_labels:
+    if global_labels == "False":
         title += f", without global labels"
     else:
         title += f", with global labels"
@@ -146,7 +147,7 @@ if __name__ == '__main__':
                     line_count += 1
             # print(f"processed {line_count} lines")
         try:
-            plotting_averages(filename=result_file, data_plot=data, rolling_average=int(5))
+            plotting_averages(filename=result_file, data_plot=data, rolling_average=int(20))
         except:
             print(result_file, "failed")
 

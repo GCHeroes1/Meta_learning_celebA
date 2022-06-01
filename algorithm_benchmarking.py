@@ -12,6 +12,7 @@ from tqdm import tqdm
 from torch import nn, optim
 import learn2learn as l2l
 from CifarCNN import CifarCNN
+from learn2learn.optim.transforms import MetaCurvatureTransform
 
 
 def accuracy(predictions, targets):
@@ -45,7 +46,8 @@ def fast_adapt(batch, learner, loss, adaptation_steps, shots, ways, device):
     return valid_error, valid_accuracy
 
 
-def main(taskset, tasks, ways=5, shots=1, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, adaptation_steps=1,
+def main(model, algorithm, taskset, tasks, ways=5, shots=1, meta_lr=0.003, meta_batch_size=32,
+         adaptation_steps=1,
          num_iterations=10,
          cuda=True, seed=42):
     random.seed(seed)
@@ -65,24 +67,26 @@ def main(taskset, tasks, ways=5, shots=1, meta_lr=0.003, fast_lr=0.5, meta_batch
                                                   root=f'./data/{taskset}',
                                                   )
 
-    # Create model
-    if taskset == "omniglot":
-        model = l2l.vision.models.OmniglotFC(28 ** 2, ways)
-    # elif taskset == "omniglotFC":
+    # # Create model
+    # if taskset == "omniglot":
     #     model = l2l.vision.models.OmniglotFC(28 ** 2, ways)
     # elif taskset == "omniglotCNN":
     #     model = l2l.vision.models.OmniglotCNN(ways)
-    elif taskset == "mini-imagenet":
-        model = l2l.vision.models.MiniImagenetCNN(ways)
-    elif taskset == "fc100":
-        model = CifarCNN(output_size=ways)
-    else:
-        model = l2l.vision.models.ResNet12(ways)
+    # elif taskset == "mini-imagenet":
+    #     model = l2l.vision.models.MiniImagenetCNN(ways)
+    # elif taskset == "fc100":
+    #     model = CifarCNN(output_size=ways)
+    # elif taskset == "fc100_WRN28":
+    #     model = l2l.vision.models.WRN28(output_size=ways)
+    # elif taskset == "celebA":
+    #     model = l2l.vision.models.ResNet12(ways, hidden_size=2560)
+    # else:
+    #     model = l2l.vision.models.ResNet12(ways)
 
     model.to(device)
-    maml = l2l.algorithms.MAML(model, lr=fast_lr, first_order=False)
-    maml.to(device)
-    opt = optim.Adam(maml.parameters(), meta_lr)
+    # metaSGD = l2l.algorithms.MetaSGD(model, lr=fast_lr, first_order=False)
+    algorithm.to(device)
+    opt = optim.Adam(algorithm.parameters(), meta_lr)
     loss = nn.CrossEntropyLoss(reduction='mean')
 
     data_plot = []
@@ -95,7 +99,7 @@ def main(taskset, tasks, ways=5, shots=1, meta_lr=0.003, fast_lr=0.5, meta_batch
         meta_valid_accuracy = 0.0
         for task in range(meta_batch_size):
             # Compute meta-training loss
-            learner = maml.clone()
+            learner = algorithm.clone()
             batch = tasksets.train.sample()
             evaluation_error, evaluation_accuracy = \
                 fast_adapt(batch, learner, loss, adaptation_steps, shots, ways, device)
@@ -104,7 +108,7 @@ def main(taskset, tasks, ways=5, shots=1, meta_lr=0.003, fast_lr=0.5, meta_batch
             meta_train_accuracy += evaluation_accuracy.item()
 
             # Compute meta-validation loss
-            learner = maml.clone()
+            learner = algorithm.clone()
             batch = tasksets.validation.sample()
             evaluation_error, evaluation_accuracy = \
                 fast_adapt(batch, learner, loss, adaptation_steps, shots, ways, device)
@@ -126,7 +130,7 @@ def main(taskset, tasks, ways=5, shots=1, meta_lr=0.003, fast_lr=0.5, meta_batch
         # print('\n')
 
         # Average the accumulated gradients and optimize
-        for p in maml.parameters():
+        for p in algorithm.parameters():
             p.grad.data.mul_(1.0 / meta_batch_size)
         opt.step()
 
@@ -134,7 +138,7 @@ def main(taskset, tasks, ways=5, shots=1, meta_lr=0.003, fast_lr=0.5, meta_batch
     meta_test_accuracy = 0.0
     for task in range(meta_batch_size):
         # Compute meta-testing loss
-        learner = maml.clone()
+        learner = algorithm.clone()
         batch = tasksets.test.sample()
         evaluation_error, evaluation_accuracy = \
             fast_adapt(batch, learner, loss, adaptation_steps, shots, ways, device)
@@ -148,13 +152,35 @@ def main(taskset, tasks, ways=5, shots=1, meta_lr=0.003, fast_lr=0.5, meta_batch
 
 
 if __name__ == '__main__':
-    # main()
-    # test_accuracy = 0
-    num_tasks = 5
-    ways = 5
-    shots = 1
-    # for i in range(10):
-    #     print('Iteration', i + 1)
-    test_accuracy = main(taskset="omniglot", tasks=num_tasks, ways=ways * num_tasks,
-                         meta_batch_size=16, shots=shots, num_iterations=10)
-    # print(test_accuracy / 10)
+    # tasksets = ["omniglot", "mini-imagenet", "fc100"]
+    tasksets = ["fc100"]
+    for taskset in tasksets:
+        if taskset == "omniglot":
+            main(taskset="omniglot", tasks=10,
+                 ways=100,
+                 shots=1,
+                 num_iterations=1500,
+                 meta_batch_size=32)
+            # 3hr11 for 1500 epoch
+        elif taskset == "mini-imagenet":
+            main(taskset="mini-imagenet", tasks=10,
+                 ways=15,
+                 shots=5,
+                 num_iterations=1500,
+                 meta_batch_size=32)
+            # 2hr2 for 1500 epoch
+        elif taskset == "fc100":
+            main(taskset="fc100", tasks=1000,
+                 ways=15,
+                 shots=1,
+                 num_iterations=2000,
+                 meta_batch_size=32)
+    # num_tasks = 10
+    # ways = 100
+    # shots = 1
+    # iterations = 1500
+    # batch_size = 32
+    #
+    # main(taskset=taskset, tasks=num_tasks, ways=ways,
+    #      meta_batch_size=batch_size, shots=shots,
+    #      num_iterations=iterations)

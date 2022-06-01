@@ -66,7 +66,8 @@ def fast_adapt(batch, learner, loss, adaptation_steps, device):
     return valid_error, valid_accuracy
 
 
-def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, adaptation_steps=1, num_iterations=60000,
+def main(model, algorithm, tasks, ways, shots, meta_lr=0.003, meta_batch_size=32, adaptation_steps=1,
+         num_iterations=60000,
          cuda=True, seed=42, global_labels=False):
     random.seed(seed)
     np.random.seed(seed)
@@ -88,12 +89,13 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
     * **dropblock_dropout** (float, *optional*, default=0.1) - Dropout rate for the residual layers.
     * **dropblock_size** (int, *optional*, default=5) - Size of drop blocks.
     """
-    model = l2l.vision.models.ResNet12(ways, hidden_size=2560)
     # model = l2l.vision.models.ResNet12(ways, hidden_size=2560)
-    model.to(device, dtype=torch.float)
+    model.to(device)
+    # model.to(device, dtype=torch.float)
 
-    maml = l2l.algorithms.MAML(model, lr=fast_lr, first_order=False, allow_nograd=True)
-    opt = optim.Adam(maml.parameters(), meta_lr)
+    # algorithm = l2l.algorithms.MAML(model, lr=fast_lr, first_order=False, allow_nograd=True)
+    algorithm.to(device)
+    opt = optim.Adam(algorithm.parameters(), meta_lr)
     loss = nn.CrossEntropyLoss(reduction='mean')
     # dataset = CustomDataset(tasks=3, classes=15, transform=transformation, image_size=image_size)
     dataset = CustomDataset(tasks=tasks, classes=ways, samples_per_class=shots, img_path=dataroot,
@@ -111,7 +113,7 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
         for task in range(meta_batch_size):
             # Compute meta-training loss
             sampler = CustomSampler(dataset, global_labels=global_labels)
-            learner = maml.clone()
+            learner = algorithm.clone()
             evaluation_error, evaluation_accuracy = \
                 fast_adapt(sampler.train_sampler(), learner, loss, adaptation_steps, device)
             evaluation_error.backward()
@@ -120,7 +122,7 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
 
             # Compute meta-validation loss
             sampler = CustomSampler(dataset, global_labels=global_labels)
-            learner = maml.clone()
+            learner = algorithm.clone()
             evaluation_error, evaluation_accuracy = \
                 fast_adapt(sampler.val_sampler(), learner, loss, adaptation_steps, device)
             meta_valid_error += evaluation_error.item()
@@ -141,7 +143,7 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
         # print('\n')
 
         # Average the accumulated gradients and optimize
-        for p in maml.parameters():
+        for p in algorithm.parameters():
             p.grad.data.mul_(1.0 / meta_batch_size)
         opt.step()
 
@@ -152,7 +154,7 @@ def main(tasks, ways, shots, meta_lr=0.003, fast_lr=0.5, meta_batch_size=32, ada
     for task in range(meta_batch_size):
         # Compute meta-testing loss
         sampler = CustomSampler(dataset, global_labels=global_labels)
-        learner = maml.clone()
+        learner = algorithm.clone()
         evaluation_error, evaluation_accuracy = \
             fast_adapt(sampler.test_sampler(), learner, loss, adaptation_steps, device)
         meta_test_error += evaluation_error.item()
