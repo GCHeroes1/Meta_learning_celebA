@@ -86,12 +86,6 @@ if __name__ == '__main__':
         os.makedirs(f'./plots')
     if not os.path.exists(f'./results'):
         os.makedirs(f'./results')
-    # for algorithm in algorithms:
-    #     for taskset in tasksets:
-    #         if not os.path.exists(f'./plots/{algorithm}/{taskset}'):
-    #             os.makedirs(f'./plots/{algorithm}/{taskset}')
-    #         if not os.path.exists(f'./results/{algorithm}/{taskset}'):
-    #             os.makedirs(f'./results/{algorithm}/{taskset}')
 
     # # trial to see if it runs
     # algorithms = ["MAML", "GBML", "MetaSGD"]
@@ -130,16 +124,16 @@ if __name__ == '__main__':
     #             pass
 
     # minst? should be easy right
-    tasksets = ["mini-imagenet", "fc100"]
     algorithms = ["MAML", "GBML", "MetaSGD"]
+    tasksets = ["celebA", "omniglot", "mini-imagenet", "fc100"]
     for taskset in tasksets:
         for algorithm in algorithms:
             print(f"running {algorithm} with {taskset}")
             if taskset == "celebA":
-                run_experiment(algorithm, taskset, tasks=50, ways=250, shots=5, batch_size=32, iterations=500,
+                run_experiment(algorithm, taskset, tasks=1000, ways=5000, shots=5, batch_size=32, iterations=500,
                                global_labels=False)
             else:
-                run_experiment(algorithm=algorithm, taskset=taskset, tasks=50, ways=5, shots=5, iterations=500,
+                run_experiment(algorithm=algorithm, taskset=taskset, tasks=1000, ways=5, shots=5, iterations=500,
                                batch_size=4, global_labels=True)
         # elif taskset == "omniglot":
         #     run_experiment(algorithm=algorithm, taskset=taskset, tasks=50, ways=5, shots=5, iterations=500,

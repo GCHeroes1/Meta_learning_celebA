@@ -8,3 +8,7 @@
 /results*/
 /plots*/
 .editorconfig
+MAML_*
+Meta_*
+GBML_*
+r2d2_*

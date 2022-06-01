@@ -67,14 +67,14 @@ class CustomDataset(Dataset):
             task_map[task] = class_map
         return task_map
 
-    def __init__(self, tasks=3, classes=15, samples_per_class=10, img_path=dataroot, label_path=labels_path,
+    def __init__(self, tasks=3, classes=15, shots=10, img_path=dataroot, label_path=labels_path,
                  transform=None, image_size=32):
         self.img_dim = (image_size, image_size)
         self.transform = transform
         self.tasks = tasks  # 3
         self.classes = classes  # 15
         self.classes_per_task = int(classes / tasks)  # 5
-        self.samples_per_class = samples_per_class  # 10
+        self.samples_per_class = shots  # 10
         self.samples_per_task = self.classes_per_task * self.samples_per_class  # 50
 
         self.img_path = img_path
