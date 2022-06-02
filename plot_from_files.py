@@ -29,6 +29,17 @@ def collect_parameters(filename):
     return algorithm, dataset, num_tasks, ways, shots, iterations, batch_size, global_labels
 
 
+def collect_new_parameters(filename):
+    hyperparameters = filename.split("\\")[-1].split("_")
+    algorithm, dataset, num_tasks, ways, shots, adaptation_steps, iterations, batch_size, global_labels = hyperparameters
+    # if dataset == "celebA":
+    #     if global_labels == "False":
+    #         global_labels = "out"
+    #     else:
+    #         global_labels = ""
+    return algorithm, dataset, num_tasks, ways, shots, adaptation_steps, iterations, batch_size, global_labels
+
+
 def calc_avg_std(data, rolling_average):
     train_err = [x[1] for x in data]
     train_acc = [c[2] for c in data]
@@ -73,14 +84,17 @@ def resave_file(filename, data):
 
 
 def plotting_averages(filename, data_plot, rolling_average=50):
-    algorithm, dataset, num_tasks, ways, shots, iterations, batch_size, global_labels = collect_parameters(filename)
+    # algorithm, dataset, num_tasks, ways, shots, iterations, batch_size, global_labels = collect_parameters(filename)
+    algorithm, dataset, num_tasks, ways, shots, adaptation_steps, iterations, batch_size, global_labels = collect_new_parameters(
+        filename)
 
     N = np.arange(len(data_plot))
     avg_train_err, std_train_err, avg_train_acc, std_train_acc, avg_val_err, std_val_err, avg_val_acc, std_val_acc, \
         = calc_avg_std(data_plot, rolling_average)
 
     # save_file = f'./plots/{algorithm}_{dataset}_{str(num_tasks)}_{str(ways)}_{shots}_{batch_size}_{iterations}_{global_labels}'
-    save_file = f'./plots_test/{algorithm}_{dataset}_{str(num_tasks)}_{str(ways)}_{shots}_{batch_size}_{iterations}_{global_labels}.png'
+    # save_file = f'./plots_test/{algorithm}_{dataset}_{str(num_tasks)}_{str(ways)}_{shots}_{batch_size}_{iterations}_{global_labels}.png'
+    save_file = f'./plots_test/{algorithm}_{dataset}_{str(num_tasks)}_{str(ways)}_{shots}_{adaptation_steps}_{batch_size}_{iterations}_{global_labels}.png'
     # if dataset == "celebA":
     #     if global_labels == "out":
     #         save_file += "_False"
@@ -95,7 +109,7 @@ def plotting_averages(filename, data_plot, rolling_average=50):
     time.sleep(0.1)
     title = (
         f"{algorithm}, {dataset} dataset, train and val accuracy & error for {str(int(num_tasks))} tasks with {ways} classes"
-        f"\nand {shots} shots, meta batch size is {batch_size}, trained for {iterations} iterations")
+        f"\nand {shots} shots, {adaptation_steps} adaptation steps, meta batch size is {batch_size}, trained for {iterations} iterations")
     if global_labels == "False":
         title += f", without global labels"
     else:

@@ -66,7 +66,7 @@ def fast_adapt(batch, learner, loss, adaptation_steps, device):
     return valid_error, valid_accuracy
 
 
-def main(model, algorithm, tasks, ways, shots, meta_lr=0.003, meta_batch_size=32, adaptation_steps=1,
+def main(model, algorithm, tasks, ways, shots, adaptation_steps=1, meta_lr=0.003, meta_batch_size=32,
          num_iterations=60000,
          cuda=True, seed=42, global_labels=False):
     random.seed(seed)
@@ -98,8 +98,8 @@ def main(model, algorithm, tasks, ways, shots, meta_lr=0.003, meta_batch_size=32
     opt = optim.Adam(algorithm.parameters(), meta_lr)
     loss = nn.CrossEntropyLoss(reduction='mean')
     # dataset = CustomDataset(tasks=3, classes=15, transform=transformation, image_size=image_size)
-    dataset = CustomDataset(tasks=tasks, classes=ways, samples_per_class=shots, img_path=dataroot,
-                            label_path=labels_path, transform=transformation, image_size=image_size)
+    dataset = CustomDataset(tasks=tasks, classes=ways, shots=shots, img_path=dataroot, label_path=labels_path,
+                            transform=transformation, image_size=image_size)
 
     data_plot = []
 

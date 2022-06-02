@@ -46,10 +46,8 @@ def fast_adapt(batch, learner, loss, adaptation_steps, shots, ways, device):
     return valid_error, valid_accuracy
 
 
-def main(model, algorithm, taskset, tasks, ways=5, shots=1, meta_lr=0.003, meta_batch_size=32,
-         adaptation_steps=1,
-         num_iterations=10,
-         cuda=True, seed=42):
+def main(model, algorithm, taskset, tasks, ways, shots, adaptation_steps=1, meta_lr=0.003, meta_batch_size=32,
+         num_iterations=10, cuda=True, seed=42):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
