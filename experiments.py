@@ -9,20 +9,20 @@ import os
 import csv
 import learn2learn as l2l
 from CifarCNN import CifarCNN
-from learn2learn.optim.transforms import MetaCurvatureTransform
+from learn2learn.optim.transforms import MetaCurvatureTransform, KroneckerTransform
 
 
 def get_model(task, ways):
     if task == "omniglot":
         return task, l2l.vision.models.OmniglotFC(28 ** 2, ways)
     elif task == "omniglotCNN":
-        return task, l2l.vision.models.OmniglotCNN(ways)
+        return "omniglot", l2l.vision.models.OmniglotCNN(ways)
     elif task == "mini-imagenet" or task == "tiered-imagenet":
-        return task, l2l.vision.models.MiniImagenetCNN(ways)
+        return task, l2l.vision.models.ResNet12(ways)
     elif task == "fc100":
         return task, CifarCNN(output_size=ways)
     elif task == "celebA":
-        return task, l2l.vision.models.ResNet12(ways, hidden_size=2560)
+        return task, l2l.vision.models.ResNet12(ways, hidden_size=5760)
     else:
         return task, l2l.vision.models.ResNet12(ways)
 
@@ -34,24 +34,27 @@ def get_algorithm(model, algorithm, fast_lr=0.5):
         return l2l.algorithms.GBML(model, lr=fast_lr, transform=MetaCurvatureTransform, allow_nograd=True)
     elif algorithm == "MetaSGD":
         return l2l.algorithms.MetaSGD(model, lr=fast_lr)
+    elif algorithm == "KFO":
+        kronecker_transform = KroneckerTransform(l2l.nn.KroneckerLinear)
+        return l2l.algorithms.GBML(model, lr=fast_lr, transform=kronecker_transform, allow_nograd=True)
 
 
 # maybe try omniglotCNN for omniglot
 def run_experiment(algorithm, taskset, tasks, ways, shots, adaptation_steps, iterations, batch_size, global_labels,
                    save=True):
-    save_file = f"./results/{algorithm}_{taskset}_{tasks}_{ways}_{shots}_{adaptation_steps}_{iterations}_{batch_size}_{global_labels}"
-
+    save_file = f"{RESULTS_DIR}/{algorithm}_{taskset}_{tasks}_{ways}_{shots}_{adaptation_steps}_{iterations}_{batch_size}_{global_labels}"
+    if os.path.exists(save_file):
+        return
     taskset, model = get_model(taskset, ways)
     algorithm_ = get_algorithm(model, algorithm)
 
     if taskset == "celebA":
-        data_plot, accuracy = celebA_benchmarking.main(model, algorithm_, tasks, ways, shots, adaptation_steps,
-                                                       meta_batch_size=batch_size, num_iterations=iterations,
-                                                       global_labels=global_labels)
+        data_plot = celebA_benchmarking.main(model, algorithm_, tasks, ways, shots, adaptation_steps,
+                                             meta_batch_size=batch_size, num_iterations=iterations,
+                                             global_labels=global_labels)
     else:
-        data_plot, accuracy = algorithm_benchmarking.main(model, algorithm_, taskset, tasks, ways, shots,
-                                                          adaptation_steps, meta_batch_size=batch_size,
-                                                          num_iterations=iterations)
+        data_plot = algorithm_benchmarking.main(model, algorithm_, taskset, tasks, ways, shots, adaptation_steps,
+                                                meta_batch_size=batch_size, num_iterations=iterations)
     # if algorithm == "MAML":
     #     if taskset == "celebA":
     #         data_plot, accuracy = MAML_celeb.main(tasks, ways, shots, meta_batch_size=batch_size,
@@ -82,10 +85,9 @@ def run_experiment(algorithm, taskset, tasks, ways, shots, adaptation_steps, ite
 
 
 if __name__ == '__main__':
-    if not os.path.exists(f'./plots'):
-        os.makedirs(f'./plots')
-    if not os.path.exists(f'./results'):
-        os.makedirs(f'./results')
+    RESULTS_DIR = './results_final'
+    if not os.path.exists(RESULTS_DIR):
+        os.makedirs(RESULTS_DIR)
 
     # # trial to see if it runs
     # algorithms = ["MAML", "GBML", "MetaSGD"]
@@ -95,70 +97,23 @@ if __name__ == '__main__':
     #         print(f"running {algorithm} with {taskset}")
     #         if taskset == "celebA":
     #             run_experiment(algorithm=algorithm, taskset=taskset, tasks=10, ways=50, shots=5, adaptation_steps=1,
-    #                            iterations=2, batch_size=4, global_labels=False, save=False)
+    #                            iterations=2, batch_size=1, global_labels=False, save=False)
     #         else:
     #             run_experiment(algorithm=algorithm, taskset=taskset, tasks=50, ways=5, shots=5, adaptation_steps=1,
-    #                            iterations=2, batch_size=4, global_labels=True, save=False)
-
-    # # minst? should be easy right
-    # algorithms = ["MAML", "GBML", "MetaSGD"]
-    # tasksets = ["omniglot", "mini-imagenet", "fc100", "celebA"]
-    # for taskset in tasksets:
-    #     for algorithm in algorithms:
-    #         print(f"running {algorithm} with {taskset}")
-    #         if taskset == "celebA":
-    #             run_experiment(algorithm, taskset, tasks=500, ways=5000, shots=5, batch_size=128, iterations=200,
-    #                            global_labels=False)
-    #             pass
-    #         elif taskset == "omniglot":
-    #             run_experiment(algorithm=algorithm, taskset=taskset, tasks=200, ways=100, shots=5, iterations=200,
-    #                            batch_size=32, global_labels=True)
-    #             pass
-    #         elif taskset == "mini-imagenet":
-    #             run_experiment(algorithm=algorithm, taskset=taskset, tasks=750, ways=15, shots=5, iterations=200,
-    #                            batch_size=32, global_labels=True)
-    #             pass
-    #         elif taskset == "fc100":
-    #             run_experiment(algorithm=algorithm, taskset=taskset, tasks=2500, ways=20, shots=5, iterations=200,
-    #                            batch_size=32, global_labels=True)
-    #             pass
+    #                            iterations=2, batch_size=1, global_labels=True, save=False)
 
     # minst? should be easy right
-    algorithms = ["MAML", "GBML", "MetaSGD"]
-    tasksets = ["celebA"]
+    algorithms = ["MAML", "KFO", "MetaSGD", "GBML"]
+    tasksets = ["celebA", "omniglot", "mini-imagenet", "fc100", "tiered-imagenet"]
     for taskset in tasksets:
         for algorithm in algorithms:
             print(f"running {algorithm} with {taskset}")
-            if taskset == "celebA":
-                run_experiment(algorithm, taskset, tasks=1000, ways=5000, shots=5, adaptation_steps=2, batch_size=32,
-                               iterations=500, global_labels=False)
-            else:
-                run_experiment(algorithm, taskset, tasks=1000, ways=5, shots=5, adaptation_steps=2, batch_size=4,
-                               iterations=500, global_labels=True)
-
-    # algorithms = ["MAML", "GBML", "MetaSGD"]
-    # tasksets = ["omniglot", "mini-imagenet", "fc100", "tiered-imagenet"]
-    # for taskset in tasksets:
-    #     for algorithm in algorithms:
-    #         print(f"running {algorithm} with {taskset}")
-    #         if taskset == "celebA":
-    #             run_experiment(algorithm, taskset, tasks=1000, ways=5000, shots=5, adaptation_steps=2, batch_size=32,
-    #                            iterations=500, global_labels=False)
-    #         else:
-    #             run_experiment(algorithm, taskset, tasks=1000, ways=5, shots=5, adaptation_steps=2, batch_size=4,
-    #                            iterations=500, global_labels=True)
-    # elif taskset == "omniglot":
-    #     run_experiment(algorithm=algorithm, taskset=taskset, tasks=50, ways=5, shots=5, iterations=500,
-    #                    batch_size=4, global_labels=True)
-    #     pass
-    # elif taskset == "mini-imagenet":
-    #     run_experiment(algorithm=algorithm, taskset=taskset, tasks=50, ways=5, shots=5, iterations=500,
-    #                    batch_size=4, global_labels=True)
-    #     pass
-    # elif taskset == "fc100":
-    #     run_experiment(algorithm=algorithm, taskset=taskset, tasks=50, ways=5, shots=5, iterations=500,
-    #                    batch_size=4, global_labels=True)
-    #     pass
-    # else:
-    #     run_experiment(algorithm=algorithm, taskset=taskset, tasks=50, ways=5, shots=5, iterations=500,
-    #                    batch_size=4, global_labels=True)
+            try:
+                if taskset == "celebA":
+                    run_experiment(algorithm, taskset, tasks=1000, ways=5000, shots=5, adaptation_steps=1,
+                                   batch_size=32, iterations=1000, global_labels=False)
+                else:
+                    run_experiment(algorithm, taskset, tasks=1000, ways=5, shots=5, adaptation_steps=1, batch_size=32,
+                                   iterations=500, global_labels=True)
+            except:
+                print("failed")

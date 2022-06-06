@@ -12,7 +12,7 @@ workers = 4
 ngpu = 1
 dataroot = r"./CelebA-20220516T115258Z-001/CelebA/Img/img_align_celeba/img_align_celeba"
 labels_path = r"./CelebA-20220516T115258Z-001/CelebA/Anno/identity_CelebA.txt"
-image_size = 100
+image_size = 112
 device = torch.device('cpu')
 if torch.cuda.is_available():
     device = torch.device('cuda')
@@ -139,7 +139,7 @@ def main(model, algorithm, tasks, ways, shots, adaptation_steps=1, meta_lr=0.003
         # print('Meta Train Accuracy', train_acc)
         # print('Meta Valid Error', val_err)
         # print('Meta Valid Accuracy', val_acc)
-        data_plot.append((iteration, train_err, train_acc, val_err, val_acc))
+        # data_plot.append((iteration, train_err, train_acc, val_err, val_acc))
         # print('\n')
 
         # Average the accumulated gradients and optimize
@@ -147,23 +147,26 @@ def main(model, algorithm, tasks, ways, shots, adaptation_steps=1, meta_lr=0.003
             p.grad.data.mul_(1.0 / meta_batch_size)
         opt.step()
 
-    meta_test_error = 0.0
-    meta_test_accuracy = 0.0
-    # dataset = CustomDataset(tasks=tasks, classes=ways, samples_per_class=shots, img_path=dataroot,
-    #                         label_path=labels_path, transform=transformation, image_size=image_size)
-    for task in range(meta_batch_size):
-        # Compute meta-testing loss
-        sampler = CustomSampler(dataset, global_labels=global_labels)
-        learner = algorithm.clone()
-        evaluation_error, evaluation_accuracy = \
-            fast_adapt(sampler.test_sampler(), learner, loss, adaptation_steps, device)
-        meta_test_error += evaluation_error.item()
-        meta_test_accuracy += evaluation_accuracy.item()
-    test_err = meta_test_error / meta_batch_size
-    test_acc = meta_test_accuracy / meta_batch_size
-    print('Meta Test Error', test_err)
-    print('Meta Test Accuracy', test_acc)
-    return data_plot, test_acc
+        meta_test_error = 0.0
+        meta_test_accuracy = 0.0
+        # dataset = CustomDataset(tasks=tasks, classes=ways, samples_per_class=shots, img_path=dataroot,
+        #                         label_path=labels_path, transform=transformation, image_size=image_size)
+        for task in range(meta_batch_size):
+            # Compute meta-testing loss
+            sampler = CustomSampler(dataset, global_labels=global_labels)
+            learner = algorithm.clone()
+            evaluation_error, evaluation_accuracy = \
+                fast_adapt(sampler.test_sampler(), learner, loss, adaptation_steps, device)
+            meta_test_error += evaluation_error.item()
+            meta_test_accuracy += evaluation_accuracy.item()
+        test_err = meta_test_error / meta_batch_size
+        test_acc = meta_test_accuracy / meta_batch_size
+        # print('Meta Test Error', test_err)
+        # print('Meta Test Accuracy', test_acc)
+        data_plot.append((iteration, train_err, train_acc, val_err, val_acc, test_err, test_acc))
+    # print('Meta Test Error', test_err)
+    # print('Meta Test Accuracy', test_acc)
+    return data_plot
 
 
 if __name__ == '__main__':

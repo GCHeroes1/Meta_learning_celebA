@@ -124,7 +124,7 @@ def main(model, algorithm, taskset, tasks, ways, shots, adaptation_steps=1, meta
         # print('Meta Train Accuracy', train_acc)
         # print('Meta Valid Error', val_err)
         # print('Meta Valid Accuracy', val_acc)
-        data_plot.append((iteration, train_err, train_acc, val_err, val_acc))
+        # data_plot.append((iteration, train_err, train_acc, val_err, val_acc))
         # print('\n')
 
         # Average the accumulated gradients and optimize
@@ -132,21 +132,22 @@ def main(model, algorithm, taskset, tasks, ways, shots, adaptation_steps=1, meta
             p.grad.data.mul_(1.0 / meta_batch_size)
         opt.step()
 
-    meta_test_error = 0.0
-    meta_test_accuracy = 0.0
-    for task in range(meta_batch_size):
-        # Compute meta-testing loss
-        learner = algorithm.clone()
-        batch = tasksets.test.sample()
-        evaluation_error, evaluation_accuracy = \
-            fast_adapt(batch, learner, loss, adaptation_steps, shots, ways, device)
-        meta_test_error += evaluation_error.item()
-        meta_test_accuracy += evaluation_accuracy.item()
-    test_err = meta_test_error / meta_batch_size
-    test_acc = meta_test_accuracy / meta_batch_size
-    print('Meta Test Error', test_err)
-    print('Meta Test Accuracy', test_acc)
-    return data_plot, test_acc
+        meta_test_error = 0.0
+        meta_test_accuracy = 0.0
+        for task in range(meta_batch_size):
+            # Compute meta-testing loss
+            learner = algorithm.clone()
+            batch = tasksets.test.sample()
+            evaluation_error, evaluation_accuracy = \
+                fast_adapt(batch, learner, loss, adaptation_steps, shots, ways, device)
+            meta_test_error += evaluation_error.item()
+            meta_test_accuracy += evaluation_accuracy.item()
+        test_err = meta_test_error / meta_batch_size
+        test_acc = meta_test_accuracy / meta_batch_size
+        # print('Meta Test Error', test_err)
+        # print('Meta Test Accuracy', test_acc)
+        data_plot.append((iteration, train_err, train_acc, val_err, val_acc, test_err, test_acc))
+    return data_plot
 
 
 if __name__ == '__main__':
