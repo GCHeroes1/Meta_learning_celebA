@@ -84,8 +84,8 @@ def plotting_averages(filename, data_plot, rolling_average=50):
     save_file = f'{PLOTS_DIR}/{algorithm}_{dataset}_{str(num_tasks)}_{str(ways)}_{shots}_{adaptation_steps}_' \
                 f'{batch_size}_{iterations}_{global_labels}.png'
 
-    # if os.path.exists(save_file):
-    #     return
+    if os.path.exists(save_file):
+        return
 
     plt.style.use('seaborn')
     fig, ax = plt.subplots(1, 2, figsize=(12, 5))
@@ -185,8 +185,8 @@ def plotting_algorithm_grid(dataset="celebA", iterations=1000, rolling_average=2
     if dataset == "celebA":
         global_labels = False
     save_file = f'{PLOTS_DIR}/{dataset}_{str(1000)}_{str(5)}_{5}_{1}_{32}_{iterations}_{global_labels}.png'
-    # if os.path.exists(save_file):
-    #     return
+    if os.path.exists(save_file):
+        return
 
     algorithms = ["MAML", "MetaKFO", "MetaSGD", "MetaCurvature"]
     big_data = []
@@ -245,8 +245,8 @@ def plotting_algorithm_grid(dataset="celebA", iterations=1000, rolling_average=2
 
 
 if __name__ == '__main__':
-    RESULTS_DIR = './results_final'
-    PLOTS_DIR = './plots_actual_final'
+    RESULTS_DIR = './results'
+    PLOTS_DIR = './plots'
 
     if not os.path.exists(PLOTS_DIR):
         os.makedirs(PLOTS_DIR)
@@ -288,6 +288,6 @@ if __name__ == '__main__':
     #                 print(result_file, "failed")
 
     # plotting_algorithm_grid()
-    datasets = ["celebA"]
+    datasets = ["celebA", "omniglot", "mini-imagenet", "fc100", "tiered-imagenet"]
     for dataset in datasets:
         plotting_algorithm_grid(dataset=dataset, iterations=500, rolling_average=40)

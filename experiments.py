@@ -80,7 +80,7 @@ def run_experiment(algorithm, taskset, tasks, ways, shots, adaptation_steps, ite
 
 
 if __name__ == '__main__':
-    RESULTS_DIR = './results_final'
+    RESULTS_DIR = './results'
     if not os.path.exists(RESULTS_DIR):
         os.makedirs(RESULTS_DIR)
 
