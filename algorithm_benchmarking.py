@@ -3,6 +3,7 @@ Demonstrates how to:
     * use the MAML wrapper for fast-adaptation,
     * use the benchmark interface to load Omniglot, and
     * sample tasks and split them in adaptation and evaluation sets.
+    # https://github.com/learnables/learn2learn/blob/master/examples/vision/maml_omniglot.py
 """
 
 import random
@@ -11,8 +12,6 @@ import torch
 from tqdm import tqdm
 from torch import nn, optim
 import learn2learn as l2l
-from CifarCNN import CifarCNN
-from learn2learn.optim.transforms import MetaCurvatureTransform
 
 
 def accuracy(predictions, targets):

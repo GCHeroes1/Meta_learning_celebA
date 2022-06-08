@@ -1,23 +1,13 @@
 import numpy as np
 import torch
 import torchvision.transforms as transforms
-import matplotlib.pyplot as plt
 import os
 import csv
 import cv2
-from line_profiler_pycharm import profile
-
-from textwrap import wrap
-
 from torch.utils.data import Dataset, DataLoader, Subset
-from torchvision.io import read_image
-from PIL import Image
 
-# dataroot = r"./CelebA/Img/img_align_celeba/img_align_celeba"
-# labels_path = r"./CelebA/Anno/identity_CelebA.txt"
-
-dataroot = r"./CelebA-20220516T115258Z-001/CelebA/Img/img_align_celeba/img_align_celeba"
-labels_path = r"./CelebA-20220516T115258Z-001/CelebA/Anno/identity_CelebA.txt"
+dataroot = r"./data/CelebA-20220516T115258Z-001/CelebA/Img/img_align_celeba/img_align_celeba"
+labels_path = r"./data/CelebA-20220516T115258Z-001/CelebA/Anno/identity_CelebA.txt"
 device = torch.device('cpu')
 if torch.cuda.is_available():
     device = torch.device('cuda')
@@ -83,7 +73,7 @@ class CustomDataset(Dataset):
         self.class_map = self.create_class_map(self.samples_per_class)
         # trims the lists down
         self.class_map = {key: val for key, val in self.class_map.items() if len(val) >= self.samples_per_class}
-        count_above_10 = len({key: val for key, val in self.class_map.items() if len(val) == self.samples_per_class})
+        count_above_5 = len({key: val for key, val in self.class_map.items() if len(val) == self.samples_per_class})
         self.data = []
         self.task_map = self.task_class_remap()
 
@@ -177,8 +167,10 @@ def extract(nested_list, index):
 
 def sample_dataset_train(train_size, indexes, samples_per_class):
     train_indexes = sorted(
-        [y for sub in [indexes[x::samples_per_class] for x in range(0, train_size)] for y in sub])
-    train = [train_indexes[i:i + train_size] for i in range(0, len(train_indexes), train_size)]
+        [y for sub in [indexes[x::samples_per_class] for x in range(0, train_size)]
+         for y in sub])
+    train = [train_indexes[i:i + train_size] for i in range(0, len(train_indexes),
+                                                            train_size)]
     random_train = np.random.choice(np.arange(train_size), (2,), replace=False)
     return extract(train, random_train)
 
@@ -187,7 +179,8 @@ def sample_dataset_val(train_size, test_size, indexes, samples_per_class):
     cutoff = train_size + test_size  # 80%
 
     val_indexes = sorted(
-        [y for sub in [indexes[x::samples_per_class] for x in range(train_size, cutoff)] for y in sub])
+        [y for sub in [indexes[x::samples_per_class] for x in range(train_size, cutoff)]
+         for y in sub])
     val = [val_indexes[i:i + test_size] for i in range(0, len(val_indexes), test_size)]
     random_test = np.random.choice(np.arange(test_size), (2,), replace=True)
     return extract(val, random_test)
@@ -197,7 +190,9 @@ def sample_dataset_test(train_size, test_size, indexes, samples_per_class):
     cutoff = train_size + test_size  # 80%
 
     test_indexes = sorted(
-        [y for sub in [indexes[x::samples_per_class] for x in range(cutoff, samples_per_class)] for y in sub])
+        [y for sub in [indexes[x::samples_per_class] for x in range(cutoff,
+                                                                    samples_per_class)]
+         for y in sub])
     test = [test_indexes[i:i + test_size] for i in range(0, len(test_indexes), test_size)]
     random_test = np.random.choice(np.arange(test_size), (2,), replace=True)
     return extract(test, random_test)
@@ -217,25 +212,28 @@ class CustomSampler:
             self.indexes = np.arange(self.dataset.tasks * self.dataset.samples_per_task)
         else:
             task = np.random.randint(self.dataset.tasks)
-            self.indexes = np.arange(task * self.dataset.samples_per_task, (task + 1) * self.dataset.samples_per_task)
+            self.indexes = np.arange(task * self.dataset.samples_per_task,
+                                     (task + 1) * self.dataset.samples_per_task)
 
     def train_sampler(self):
-        self.train_indexes = sample_dataset_train(self.train_size, self.indexes, self.samples_per_class)
+        self.train_indexes = sample_dataset_train(self.train_size, self.indexes,
+                                                  self.samples_per_class)
         train_subset = Subset(self.dataset, self.train_indexes)
         train_loader = DataLoader(train_subset, shuffle=True, batch_size=self.sample_size)
         next_sample = next(iter(train_loader))
         return next_sample
 
     def val_sampler(self):
-        self.val_indexes = sample_dataset_val(self.train_size, self.test_val_size, self.indexes, self.samples_per_class)
+        self.val_indexes = sample_dataset_val(self.train_size, self.test_val_size,
+                                              self.indexes, self.samples_per_class)
         val_subset = Subset(self.dataset, self.val_indexes)
         val_loader = DataLoader(val_subset, shuffle=True, batch_size=self.sample_size)
         next_sample = next(iter(val_loader))
         return next_sample
 
     def test_sampler(self):
-        self.test_indexes = sample_dataset_test(self.train_size, self.test_val_size, self.indexes,
-                                                self.samples_per_class)
+        self.test_indexes = sample_dataset_test(self.train_size, self.test_val_size,
+                                                self.indexes, self.samples_per_class)
         test_subset = Subset(self.dataset, self.test_indexes)
         test_loader = DataLoader(test_subset, shuffle=True, batch_size=self.sample_size)
         next_sample = next(iter(test_loader))
@@ -365,22 +363,25 @@ if __name__ == '__main__':
     ])
     test_accuracy_celeb = 0
     num_tasks = 10
-    ways = 500
-    shots = 20
+    ways = 50
+    shots = 5
     iterations = 1
-    batch_size = 16
+    batch_size = 32
 
-    dataset = CustomDataset(tasks=1000, classes=5000, transform=transformation, image_size=image_size)
-    train_sampler = CustomSampler(dataset, global_labels=True)
-    print(train_sampler.test_sampler()[1].T)
-    train_sampler = CustomSampler(dataset, global_labels=True)
-    print(train_sampler.test_sampler()[1].T)
-    train_sampler = CustomSampler(dataset, global_labels=True)
-    print(train_sampler.test_sampler()[1].T)
+    dataset = CustomDataset(tasks=num_tasks, classes=ways, shots=shots, img_path=dataroot, label_path=labels_path,
+                            transform=transformation, image_size=image_size)
+
+    # dataset = CustomDataset(tasks=1000, classes=5000, transform=transformation, image_size=image_size)
+    # train_sampler = CustomSampler(dataset, global_labels=True)
+    # print(train_sampler.test_sampler()[1].T)
+    # train_sampler = CustomSampler(dataset, global_labels=True)
+    # print(train_sampler.test_sampler()[1].T)
+    # train_sampler = CustomSampler(dataset, global_labels=True)
+    # print(train_sampler.test_sampler()[1].T)
 
     train_sampler2 = CustomSampler(dataset, global_labels=False)
-    print(train_sampler2.test_sampler()[1].T)
+    print(train_sampler2.train_sampler()[1].T)
     train_sampler2 = CustomSampler(dataset, global_labels=False)
-    print(train_sampler2.test_sampler()[1].T)
+    print(train_sampler2.train_sampler()[1].T)
     train_sampler2 = CustomSampler(dataset, global_labels=False)
-    print(train_sampler2.test_sampler()[1].T)
+    print(train_sampler2.train_sampler()[1].T)

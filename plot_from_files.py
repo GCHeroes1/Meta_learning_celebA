@@ -1,5 +1,3 @@
-import sys
-
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -7,7 +5,6 @@ import os
 import csv
 import glob
 import time
-from textwrap import wrap
 
 
 def movingaverage(interval, window_size):
@@ -87,14 +84,14 @@ def plotting_averages(filename, data_plot, rolling_average=50):
     save_file = f'{PLOTS_DIR}/{algorithm}_{dataset}_{str(num_tasks)}_{str(ways)}_{shots}_{adaptation_steps}_' \
                 f'{batch_size}_{iterations}_{global_labels}.png'
 
-    if os.path.exists(save_file):
-        return
+    # if os.path.exists(save_file):
+    #     return
 
     plt.style.use('seaborn')
     fig, ax = plt.subplots(1, 2, figsize=(12, 5))
     time.sleep(0.1)
     title = (
-        f"{algorithm}, {dataset} dataset, train and val accuracy & error for {str(int(num_tasks))} tasks with {ways} classes"
+        f"{algorithm}, {dataset} dataset, train and val accuracy & error for {str(int(num_tasks))} tasks {ways} classes"
         f"\nand {shots} shots, {adaptation_steps} adaptation step, meta batch size is {batch_size}, trained for {iterations} iterations")
     if global_labels == "False" or global_labels == "False2":
         title += f", without global labels"
@@ -110,6 +107,8 @@ def plotting_averages(filename, data_plot, rolling_average=50):
     ax[0].fill_between(N, avg_test_acc - std_test_acc, avg_test_acc + std_test_acc, color='green', alpha=0.3)
     ax[0].set_ylabel("Accuracy")
     ax[0].set_xlabel("Iterations")
+    ax[0].set_yticks(np.arange(0, 1, 0.1))
+    ax[0].set_yticks(ax[0].get_yticks()[::1])
     # ax[0].set_ylim([0, 0.6])
     ax[0].legend(loc='best')
 
@@ -121,10 +120,11 @@ def plotting_averages(filename, data_plot, rolling_average=50):
     ax[1].fill_between(N, avg_test_err - std_test_err, avg_test_err + std_test_err, color='green', alpha=0.3)
     ax[1].set_ylabel("Error")
     ax[1].set_xlabel("Iterations")
+    # ax[1].set_yscale("log")
     ax[1].legend(loc='best')
 
     print("done", save_file)
-    plt.savefig(save_file)
+    # plt.savefig(save_file)
     plt.show()
     plt.cla()
     plt.clf()
@@ -132,7 +132,7 @@ def plotting_averages(filename, data_plot, rolling_average=50):
     return
 
 
-def plotting_averages_single(filename, data_plot, rolling_average=50):
+def plotting_averages_single(filename, data_plot, rolling_average=5):
     algorithm, dataset, num_tasks, ways, shots, adaptation_steps, iterations, batch_size, global_labels = \
         collect_new_parameters(filename)
 
@@ -149,28 +149,24 @@ def plotting_averages_single(filename, data_plot, rolling_average=50):
     plt.style.use('seaborn')
     fig, ax = plt.subplots(figsize=(6, 5))
     time.sleep(0.1)
-    # title = ("\n".join(wrap(
-    #     f"{algorithm}, {dataset} dataset, train and val accuracy & error for {str(int(num_tasks))} tasks with {ways} "
-    #     f"classes and {shots} shots, {adaptation_steps} adaptation step, meta batch size is {batch_size}, "
-    #     f"trained for {iterations} iterations")))
-    title = (
-        f"{algorithm}, {dataset} dataset, train and val accuracy & error for {str(int(num_tasks))} tasks with {ways} "
-        f"classes and {shots} shots, {adaptation_steps} adaptation step, meta batch size is {batch_size}, "
-        f"trained for {iterations} iterations")
-    if global_labels == "False" or global_labels == "False2":
-        title += f", without global labels"
+    title = (f"{algorithm} on {dataset}")
+    if global_labels == "False":
+        title += f" without global labels \n"
     else:
-        title += f", with global labels"
+        title += f" with global labels \n"
+    title += f"Training and validation accuracy for {str(int(num_tasks))} tasks, {ways}-way {shots}-shot"
     ax.set_title(title, loc='center', wrap=True)
 
-    ax.plot(N, avg_train_acc, alpha=0.5, color='blue', label='Training Accuracy', linewidth=1.0)
-    ax.plot(N, avg_val_acc, alpha=0.5, color='red', label='Validation Accuracy', linewidth=1.0)
-    ax.plot(N, avg_test_acc, alpha=0.5, color='green', label='Testing Accuracy', linewidth=1.0)
-    ax.fill_between(N, avg_train_acc - std_train_acc, avg_train_acc + std_train_acc, color='blue', alpha=0.3)
-    ax.fill_between(N, avg_val_acc - std_val_acc, avg_val_acc + std_val_acc, color='red', alpha=0.3)
-    ax.fill_between(N, avg_test_acc - std_test_acc, avg_test_acc + std_test_acc, color='green', alpha=0.3)
+    ax.plot(N, avg_train_acc, alpha=1, color='blue', label='Training Accuracy', linewidth=1.0)
+    ax.plot(N, avg_val_acc, alpha=1, color='red', label='Validation Accuracy', linewidth=1.0)
+    ax.plot(N, avg_test_acc, alpha=1, color='green', label='Testing Accuracy', linewidth=1.0)
+    ax.fill_between(N, avg_train_acc - std_train_acc, avg_train_acc + std_train_acc, color='blue', alpha=0.2)
+    ax.fill_between(N, avg_val_acc - std_val_acc, avg_val_acc + std_val_acc, color='red', alpha=0.2)
+    ax.fill_between(N, avg_test_acc - std_test_acc, avg_test_acc + std_test_acc, color='green', alpha=0.2)
     ax.set_ylabel("Accuracy")
     ax.set_xlabel("Iterations")
+    ax.set_ylim(bottom=0.)
+    ax.set_yticks(ax.get_yticks()[::1])
     # ax[0].set_ylim([0, 0.6])
     plt.tight_layout(rect=[-0.01, -0.02, 1, 0.95])
     ax.legend(loc='best')
@@ -184,29 +180,94 @@ def plotting_averages_single(filename, data_plot, rolling_average=50):
     return
 
 
+def plotting_algorithm_grid(dataset="celebA", iterations=1000, rolling_average=25):
+    global_labels = True
+    if dataset == "celebA":
+        global_labels = False
+    save_file = f'{PLOTS_DIR}/{dataset}_{str(1000)}_{str(5)}_{5}_{1}_{32}_{iterations}_{global_labels}.png'
+    # if os.path.exists(save_file):
+    #     return
+
+    algorithms = ["MAML", "MetaKFO", "MetaSGD", "MetaCurvature"]
+    big_data = []
+    for algorithm in algorithms:
+        for result_file in glob.glob(RESULTS_DIR + os.path.sep + "*"):
+            algorithm_, dataset_, num_tasks_, ways_, shots_, adaptation_steps_, iterations_, batch_size_, global_labels_ = \
+                collect_new_parameters(result_file)
+            if algorithm_ == algorithm and dataset_ == dataset and int(iterations_) == iterations:
+                data = []
+                with open(result_file) as csv_file:
+                    csv_reader = csv.reader(csv_file, delimiter=",")
+                    line_count = 0
+                    for row in csv_reader:
+                        if len(row) > 0:
+                            data.append(list(map(float, row)))
+                            line_count += 1
+                big_data.append((algorithm, data))
+    if len(big_data) != 4:
+        return
+    plt.style.use('seaborn')
+    fig, axs = plt.subplots(2, 2, figsize=(12, 10))
+    title = f"{dataset}"
+    if global_labels == False:
+        title += f" without global labels \n"
+    else:
+        title += f" with global labels \n"
+    title += f"Training and validation accuracy for {str(1000)}-task {5}-way {5}-shot"
+    plt.suptitle(title, fontsize=20, wrap=True)
+    for i, ax in enumerate(axs.reshape(-1)):
+        N = np.arange(len(big_data[i][1]))
+        avg_train_err, std_train_err, avg_train_acc, std_train_acc, avg_val_err, std_val_err, avg_val_acc, std_val_acc, \
+        avg_test_err, std_test_err, avg_test_acc, std_test_acc = calc_avg_std(big_data[i][1], rolling_average)
+
+        ax.plot(N, avg_train_acc, alpha=1, color='blue', label='Training Accuracy', linewidth=1.0)
+        ax.plot(N, avg_val_acc, alpha=1, color='red', label='Validation Accuracy', linewidth=1.0)
+        ax.plot(N, avg_test_acc, alpha=1, color='green', label='Testing Accuracy', linewidth=1.0)
+        ax.fill_between(N, avg_train_acc - std_train_acc, avg_train_acc + std_train_acc, color='blue', alpha=0.2)
+        ax.fill_between(N, avg_val_acc - std_val_acc, avg_val_acc + std_val_acc, color='red', alpha=0.2)
+        ax.fill_between(N, avg_test_acc - std_test_acc, avg_test_acc + std_test_acc, color='green', alpha=0.2)
+        ax.set_ylabel("Accuracy")
+        ax.set_xlabel("Iterations")
+        ax.set_ylim(bottom=0.)
+        ax.set_yticks(ax.get_yticks()[::1])
+        ax.set_title(big_data[i][0])
+        # ax.tight_layout(rect=[-0.01, -0.02, 1, 0.95])
+        # ax[0].set_ylim([0, 0.6])
+        ax.legend(loc='best')
+    # plt.tight_layout(rect=[-0.01, -0.02, 1, 0.95])
+    plt.tight_layout()
+    print("done", save_file)
+    plt.savefig(save_file)
+    plt.show()
+    plt.cla()
+    plt.clf()
+    plt.close("all")
+
+
 if __name__ == '__main__':
     RESULTS_DIR = './results_final'
-    PLOTS_DIR = './plots_final_test'
+    PLOTS_DIR = './plots_actual_final'
 
     if not os.path.exists(PLOTS_DIR):
         os.makedirs(PLOTS_DIR)
 
-    data_path = "./results_final/"
-    for result_file in glob.glob(data_path + os.path.sep + "*"):
-        data = []
-        with open(result_file) as csv_file:
-            csv_reader = csv.reader(csv_file, delimiter=",")
-            line_count = 0
-            for row in csv_reader:
-                if len(row) > 0:
-                    data.append(list(map(float, row)))
-                    line_count += 1
-            # print(f"processed {line_count} lines")
-        try:
-            plotting_averages_single(filename=result_file, data_plot=data, rolling_average=int(5))
-            # break
-        except:
-            print(result_file, "failed")
+    # data_path = RESULTS_DIR
+    # for result_file in glob.glob(data_path + os.path.sep + "*"):
+    #     data = []
+    #     with open(result_file) as csv_file:
+    #         csv_reader = csv.reader(csv_file, delimiter=",")
+    #         line_count = 0
+    #         for row in csv_reader:
+    #             if len(row) > 0:
+    #                 data.append(list(map(float, row)))
+    #                 line_count += 1
+    #         # print(f"processed {line_count} lines")
+    #     plotting_averages_single(filename=result_file, data_plot=data, rolling_average=int(50))
+    #     # break
+    #     # try:
+    #     #     plotting_averages(filename=result_file, data_plot=data, rolling_average=int(5))
+    #     # except:
+    #     #     print(result_file, "failed")
 
     # for algorithm_dir in glob.glob(data_path + os.path.sep + "*"):
     #     for dataset_dir in glob.glob(algorithm_dir + os.path.sep + "*"):
@@ -225,3 +286,8 @@ if __name__ == '__main__':
     #                 resave_file(result_file, data)
     #             except:
     #                 print(result_file, "failed")
+
+    # plotting_algorithm_grid()
+    datasets = ["celebA"]
+    for dataset in datasets:
+        plotting_algorithm_grid(dataset=dataset, iterations=500, rolling_average=40)

@@ -4,5 +4,4 @@ pillow
 matplotlib
 learn2learn
 opencv-python
-line_profiler_pycharm
 tqdm

@@ -1,17 +1,17 @@
+# https://github.com/learnables/learn2learn/blob/master/examples/vision/maml_omniglot.py
+
 import random
 import numpy as np
 import torch
 import torchvision.transforms as transforms
-import learn2learn as l2l
-from line_profiler_pycharm import profile
 from tqdm import tqdm
 from celebA_dataset_creation import CustomDataset, CustomSampler
 from torch import nn, optim
 
 workers = 4
 ngpu = 1
-dataroot = r"./CelebA-20220516T115258Z-001/CelebA/Img/img_align_celeba/img_align_celeba"
-labels_path = r"./CelebA-20220516T115258Z-001/CelebA/Anno/identity_CelebA.txt"
+dataroot = r"./data/CelebA-20220516T115258Z-001/CelebA/Img/img_align_celeba/img_align_celeba"
+labels_path = r"./data/CelebA-20220516T115258Z-001/CelebA/Anno/identity_CelebA.txt"
 image_size = 112
 device = torch.device('cpu')
 if torch.cuda.is_available():
@@ -22,15 +22,7 @@ transformation = transforms.Compose([
     transforms.ConvertImageDtype(torch.float),
     transforms.Resize(image_size),
     transforms.CenterCrop(image_size)
-    # transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
 ])
-
-# N_tasks = 5
-# n_classes = 5
-# k_samples = 5
-# imagesize = 64
-# torch.set_default_dtype(torch.float)
-import sys
 
 
 def accuracy(predictions, targets):
@@ -61,7 +53,7 @@ def fast_adapt(batch, learner, loss, adaptation_steps, device):
 
     # Evaluate the adapted model
     predictions = learner(evaluation_data)
-    valid_error = loss(predictions, evaluation_labels)  # the validation error is way off
+    valid_error = loss(predictions, evaluation_labels)
     valid_accuracy = accuracy(predictions, evaluation_labels)
     return valid_error, valid_accuracy
 
@@ -77,18 +69,6 @@ def main(model, algorithm, tasks, ways, shots, adaptation_steps=1, meta_lr=0.003
         torch.cuda.manual_seed(seed)
         device = torch.device('cuda')
 
-    """
-    **Arguments**
-    * **output_size** (int) - The dimensionality of the output (eg, number of classes).
-    * **hidden_size** (list, *optional*, default=640) - Size of the embedding once features are extracted.
-        (640 is for mini-ImageNet; used for the classifier layer)
-    * **avg_pool** (bool, *optional*, default=True) - Set to False for the 16k-dim embeddings of Lee et al, 2019.
-    * **wider** (bool, *optional*, default=True) - True uses (64, 160, 320, 640) filters akin to Lee et al, 2019.
-        False uses (64, 128, 256, 512) filters, akin to Oreshkin et al, 2018.
-    * **embedding_dropout** (float, *optional*, default=0.0) - Dropout rate on the flattened embedding layer.
-    * **dropblock_dropout** (float, *optional*, default=0.1) - Dropout rate for the residual layers.
-    * **dropblock_size** (int, *optional*, default=5) - Size of drop blocks.
-    """
     # model = l2l.vision.models.ResNet12(ways, hidden_size=2560)
     model.to(device)
     # model.to(device, dtype=torch.float)
@@ -170,13 +150,6 @@ def main(model, algorithm, tasks, ways, shots, adaptation_steps=1, meta_lr=0.003
 
 
 if __name__ == '__main__':
-    """
-    :param train_ways: number of classes per training batch
-    :param train_samples: number of samples per training batch
-    :param test_ways: number of classes per test/val batch
-    :param test_samples: number of samples per test/val batch
-    :param num_tasks: number of tasks in each dataset
-    """
     test_accuracy = 0
     num_tasks = 5
     ways = 5
