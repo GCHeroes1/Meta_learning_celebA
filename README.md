@@ -46,3 +46,16 @@ The final /data folder structure should look as follows:
 └── ...
 
 ```
+
+The code is written to run in python 3.9 with pytorch for cuda 11.3. To setup the virtualenv, follow the steps below:
+
+```
+python -m venv ./venv
+python ./venv/Scripts/activate
+python -m pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu113
+python -m pip install -r requirements.txt
+```
+
+To run the experiments described in the study, run experiments.py
+
+To plot the results, run plot_from_files.py
