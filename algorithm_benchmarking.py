@@ -11,6 +11,7 @@ import numpy as np
 import torch
 from tqdm import tqdm
 from torch import nn, optim
+from CifarCNN import CifarCNN
 import learn2learn as l2l
 
 
@@ -136,7 +137,7 @@ def main(model, algorithm, taskset, tasks, ways, shots, adaptation_steps=1, meta
 if __name__ == '__main__':
     # tasksets = ["omniglot", "mini-imagenet", "fc100"]
     ways = 15
-    model = l2l.vision.models.ResNet12(ways, hidden_size=5760)
+    model = CifarCNN(output_size=ways)
     algorithm = l2l.algorithms.MetaSGD(model, lr=0.5)
     tasksets = ["fc100"]
     for taskset in tasksets:
@@ -144,7 +145,7 @@ if __name__ == '__main__':
             main(taskset="omniglot", tasks=10,
                  ways=100,
                  shots=1,
-                 num_iterations=1500,
+                 num_iterations=5,
                  meta_batch_size=32,
                  algorithm=algorithm,
                  model=model)
@@ -153,7 +154,7 @@ if __name__ == '__main__':
             main(taskset="mini-imagenet", tasks=10,
                  ways=15,
                  shots=5,
-                 num_iterations=1500,
+                 num_iterations=5,
                  meta_batch_size=32,
                  algorithm=algorithm,
                  model=model)
@@ -162,7 +163,7 @@ if __name__ == '__main__':
             main(taskset="fc100", tasks=1000,
                  ways=15,
                  shots=1,
-                 num_iterations=2000,
+                 num_iterations=5,
                  meta_batch_size=32,
                  algorithm=algorithm,
                  model=model)

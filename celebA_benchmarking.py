@@ -158,12 +158,9 @@ def main(model, algorithm, tasks, ways, shots, adaptation_steps=1, meta_lr=0.003
 if __name__ == '__main__':
     test_accuracy = 0
     num_tasks = 5
-    ways = 5
-    shots = 1
+    ways = 25
+    shots = 5
     model = l2l.vision.models.ResNet12(ways, hidden_size=5760)
     algorithm = l2l.algorithms.MetaSGD(model, lr=0.5)
-    for i in range(10):
-        print('Iteration', i + 1)
-        test_accuracy += main(model, algorithm, num_tasks, ways, shots, 1, meta_batch_size=32, num_iterations=1000,
+    data = main(model, algorithm, num_tasks, ways, shots, 1, meta_batch_size=4, num_iterations=2,
                               global_labels=False)
-    print(test_accuracy / 10)
