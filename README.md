@@ -56,6 +56,8 @@ python -m pip install torch torchvision torchaudio --extra-index-url https://dow
 python -m pip install -r requirements.txt
 ```
 
-To run the experiments described in the study, run experiments.py
+To generate example images, run `python celebA_dataset_creation.py`
 
-To plot the results, run plot_from_files.py
+To run the experiments described in the study, run `python experiments.py`
+
+To plot the results, run `python plot_from_files.py`

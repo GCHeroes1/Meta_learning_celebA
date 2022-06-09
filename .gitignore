@@ -12,3 +12,11 @@ MAML_*
 Meta_*
 GBML_*
 r2d2_*
+venv/
+sample_images*
+example_tasks*
+.editorconfig*
+task_examples.py
+experiments_MAML.py
+download_celebA.py
+celebA.py

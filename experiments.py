@@ -50,27 +50,7 @@ def run_experiment(algorithm, taskset, tasks, ways, shots, adaptation_steps, ite
     else:
         data_plot = algorithm_benchmarking.main(model, algorithm_, taskset, tasks, ways, shots, adaptation_steps,
                                                 meta_batch_size=batch_size, num_iterations=iterations)
-    # if algorithm == "MAML":
-    #     if taskset == "celebA":
-    #         data_plot, accuracy = MAML_celeb.main(tasks, ways, shots, meta_batch_size=batch_size,
-    #                                               num_iterations=iterations, global_labels=global_labels)
-    #     else:
-    #         data_plot, accuracy = MAML_benchmarking.main(model, taskset, tasks, ways, shots, meta_batch_size=batch_size,
-    #                                                      num_iterations=iterations)
-    # elif algorithm == "GBML":
-    #     if taskset == "celebA":
-    #         data_plot, accuracy = GBML_celeb.main(tasks, ways, shots, meta_batch_size=batch_size,
-    #                                               num_iterations=iterations, global_labels=global_labels)
-    #     else:
-    #         data_plot, accuracy = GBML_benchmarking.main(model, taskset, tasks, ways, shots, meta_batch_size=batch_size,
-    #                                                      num_iterations=iterations)
-    # elif algorithm == "MetaSGD":
-    #     if taskset == "celebA":
-    #         data_plot, accuracy = Meta_SGD_celeb.main(tasks, ways, shots, meta_batch_size=batch_size,
-    #                                                   num_iterations=iterations, global_labels=global_labels)
-    #     else:
-    #         data_plot, accuracy = Meta_SGD_benchmarking.main(model, taskset, tasks, ways, shots,
-    #                                                          meta_batch_size=batch_size, num_iterations=iterations)
+
     if save:
         with open(save_file, "w") as my_csv:
             csvWriter = csv.writer(my_csv, delimiter=',')

@@ -1,9 +1,16 @@
-# https://github.com/learnables/learn2learn/blob/master/examples/vision/maml_omniglot.py
+"""
+Demonstrates how to:
+    * use the MAML wrapper for fast-adaptation,
+    * use the benchmark interface to load Omniglot, and
+    * sample tasks and split them in adaptation and evaluation sets.
+    # https://github.com/learnables/learn2learn/blob/master/examples/vision/maml_omniglot.py
+"""
 
 import random
 import numpy as np
 import torch
 import torchvision.transforms as transforms
+import learn2learn as l2l
 from tqdm import tqdm
 from celebA_dataset_creation import CustomDataset, CustomSampler
 from torch import nn, optim
@@ -59,8 +66,7 @@ def fast_adapt(batch, learner, loss, adaptation_steps, device):
 
 
 def main(model, algorithm, tasks, ways, shots, adaptation_steps=1, meta_lr=0.003, meta_batch_size=32,
-         num_iterations=60000,
-         cuda=True, seed=42, global_labels=False):
+         num_iterations=60000, cuda=True, seed=42, global_labels=False):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -154,8 +160,10 @@ if __name__ == '__main__':
     num_tasks = 5
     ways = 5
     shots = 1
+    model = l2l.vision.models.ResNet12(ways, hidden_size=5760)
+    algorithm = l2l.algorithms.MetaSGD(model, lr=0.5)
     for i in range(10):
         print('Iteration', i + 1)
-        test_accuracy += main(tasks=num_tasks, ways=ways * num_tasks, meta_batch_size=16,
-                              shots=shots, num_iterations=10, global_labels=False)
+        test_accuracy += main(model, algorithm, num_tasks, ways, shots, 1, meta_batch_size=32, num_iterations=1000,
+                              global_labels=False)
     print(test_accuracy / 10)

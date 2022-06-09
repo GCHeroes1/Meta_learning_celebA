@@ -5,6 +5,8 @@ import os
 import csv
 import cv2
 from torch.utils.data import Dataset, DataLoader, Subset
+import matplotlib.pyplot as plt
+from PIL import Image
 
 dataroot = r"./data/CelebA-20220516T115258Z-001/CelebA/Img/img_align_celeba/img_align_celeba"
 labels_path = r"./data/CelebA-20220516T115258Z-001/CelebA/Anno/identity_CelebA.txt"
@@ -298,8 +300,36 @@ class CustomSampler:
 #         next_sample = next(iter(test_loader))
 #         return next_sample
 
+def task_sampler_viewer(num_tasks, ways, shots, transformation, dataroot, labels_path, image_size):
+    dataset = CustomDataset(tasks=num_tasks, classes=ways, shots=shots, img_path=dataroot, label_path=labels_path,
+                            transform=transformation,
+                            image_size=image_size)
+    for i in range(10):
+        train_sampler2 = CustomSampler(dataset, global_labels=False)
+        data1, labels = train_sampler2.train_sampler()
+        im_array = torch.empty((image_size, 10 * image_size, 3))
+        im_array = im_array[image_size:, :, :]
+        im_array = torch.cat([im_array, torch.cat(data1.split(1, 0), 3).squeeze().permute(1, 2, 0)])
+        rgb = cv2.cvtColor(im_array.numpy(), cv2.COLOR_BGR2RGB)
+        plt.figure(figsize=(5, 1))
+        plt.imshow(rgb, cmap=plt.cm.Spectral, interpolation='nearest')
+        title_string = ""
+        for x, label in enumerate(labels.numpy()):
+            title_string += str(label[0])
+            if x != len(labels.numpy()) - 1:
+                title_string += ", "
+        plt.title("sample containing classes: " + title_string, fontsize=9)
+        plt.tight_layout()
+        plt.savefig(f"{RESULTS_DIR}/sample_{i + 1}")
+        print(f"saved to {RESULTS_DIR}/sample_{i + 1}")
+        # plt.show()
+        # plt.clf()
+
 
 if __name__ == '__main__':
+    RESULTS_DIR = './sample_images'
+    if not os.path.exists(RESULTS_DIR):
+        os.makedirs(RESULTS_DIR)
     # # tasks = [3, 5]
     # # classes = [5, 10]
     # # batch_size = [10, 15]
@@ -353,23 +383,22 @@ if __name__ == '__main__':
     # #     print("Batch of labels has shape: ", labels.shape)
     # # dataset, label = create_dataset(shots, ways, meta_batch_size, dataroot, labels_path, image_size=32
     # # batch, dataset, label = batch_loader(5, dataset, class_number)
-    image_size = 100
-    transformation = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.ConvertImageDtype(torch.float),
-        transforms.Resize(image_size),
-        transforms.CenterCrop(image_size)
-        # transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
-    ])
-    test_accuracy_celeb = 0
-    num_tasks = 10
-    ways = 50
-    shots = 5
-    iterations = 1
-    batch_size = 32
-
-    dataset = CustomDataset(tasks=num_tasks, classes=ways, shots=shots, img_path=dataroot, label_path=labels_path,
-                            transform=transformation, image_size=image_size)
+    # image_size = 112
+    # transformation = transforms.Compose([
+    #     transforms.ToTensor(),
+    #     transforms.ConvertImageDtype(torch.float),
+    #     transforms.Resize(image_size),
+    #     transforms.CenterCrop(image_size)
+    # ])
+    # test_accuracy_celeb = 0
+    # num_tasks = 10
+    # ways = 50
+    # shots = 5
+    # iterations = 1
+    # batch_size = 32
+    #
+    # dataset = CustomDataset(tasks=num_tasks, classes=ways, shots=shots, img_path=dataroot, label_path=labels_path,
+    #                         transform=transformation, image_size=image_size)
 
     # dataset = CustomDataset(tasks=1000, classes=5000, transform=transformation, image_size=image_size)
     # train_sampler = CustomSampler(dataset, global_labels=True)
@@ -379,9 +408,23 @@ if __name__ == '__main__':
     # train_sampler = CustomSampler(dataset, global_labels=True)
     # print(train_sampler.test_sampler()[1].T)
 
-    train_sampler2 = CustomSampler(dataset, global_labels=False)
-    print(train_sampler2.train_sampler()[1].T)
-    train_sampler2 = CustomSampler(dataset, global_labels=False)
-    print(train_sampler2.train_sampler()[1].T)
-    train_sampler2 = CustomSampler(dataset, global_labels=False)
-    print(train_sampler2.train_sampler()[1].T)
+    # train_sampler2 = CustomSampler(dataset, global_labels=False)
+    # print(train_sampler2.train_sampler()[1].T)
+    # train_sampler2 = CustomSampler(dataset, global_labels=False)
+    # print(train_sampler2.train_sampler()[1].T)
+    # train_sampler2 = CustomSampler(dataset, global_labels=False)
+    # print(train_sampler2.train_sampler()[1].T)
+
+    tasks = 10
+    ways = 50
+    shots = 5
+    img_size = 112
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.ConvertImageDtype(torch.float),
+        transforms.Resize(img_size),
+        transforms.CenterCrop(img_size)
+    ])
+    data = dataroot
+    labels = labels_path
+    task_sampler_viewer(tasks, ways, shots, transform, data, labels, img_size)

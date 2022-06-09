@@ -64,22 +64,6 @@ def main(model, algorithm, taskset, tasks, ways, shots, adaptation_steps=1, meta
                                                   root=f'./data/{taskset}',
                                                   )
 
-    # # Create model
-    # if taskset == "omniglot":
-    #     model = l2l.vision.models.OmniglotFC(28 ** 2, ways)
-    # elif taskset == "omniglotCNN":
-    #     model = l2l.vision.models.OmniglotCNN(ways)
-    # elif taskset == "mini-imagenet":
-    #     model = l2l.vision.models.MiniImagenetCNN(ways)
-    # elif taskset == "fc100":
-    #     model = CifarCNN(output_size=ways)
-    # elif taskset == "fc100_WRN28":
-    #     model = l2l.vision.models.WRN28(output_size=ways)
-    # elif taskset == "celebA":
-    #     model = l2l.vision.models.ResNet12(ways, hidden_size=2560)
-    # else:
-    #     model = l2l.vision.models.ResNet12(ways)
-
     model.to(device)
     # metaSGD = l2l.algorithms.MetaSGD(model, lr=fast_lr, first_order=False)
     algorithm.to(device)
@@ -151,6 +135,9 @@ def main(model, algorithm, taskset, tasks, ways, shots, adaptation_steps=1, meta
 
 if __name__ == '__main__':
     # tasksets = ["omniglot", "mini-imagenet", "fc100"]
+    ways = 15
+    model = l2l.vision.models.ResNet12(ways, hidden_size=5760)
+    algorithm = l2l.algorithms.MetaSGD(model, lr=0.5)
     tasksets = ["fc100"]
     for taskset in tasksets:
         if taskset == "omniglot":
@@ -158,21 +145,27 @@ if __name__ == '__main__':
                  ways=100,
                  shots=1,
                  num_iterations=1500,
-                 meta_batch_size=32)
+                 meta_batch_size=32,
+                 algorithm=algorithm,
+                 model=model)
             # 3hr11 for 1500 epoch
         elif taskset == "mini-imagenet":
             main(taskset="mini-imagenet", tasks=10,
                  ways=15,
                  shots=5,
                  num_iterations=1500,
-                 meta_batch_size=32)
+                 meta_batch_size=32,
+                 algorithm=algorithm,
+                 model=model)
             # 2hr2 for 1500 epoch
         elif taskset == "fc100":
             main(taskset="fc100", tasks=1000,
                  ways=15,
                  shots=1,
                  num_iterations=2000,
-                 meta_batch_size=32)
+                 meta_batch_size=32,
+                 algorithm=algorithm,
+                 model=model)
     # num_tasks = 10
     # ways = 100
     # shots = 1
