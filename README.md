@@ -30,7 +30,7 @@ The final /data folder structure should look as follows:
 │   ├── CelebA-*-001
 │   │   └── CelebA
 │   │       ├── Anno
-│   │       │   └── identity_celebA.txt
+│   │       │   └── identity_CelebA.txt
 │   │       └── Img
 │   │           └── img_align_celeba
 │   │               └── img_align_celeba
@@ -42,7 +42,8 @@ The final /data folder structure should look as follows:
 │   │   └── mini-imagenet-cache-validation.pkl
 │   ├── omniglot
 │   └── tiered-imagenet
-│       └── tiered-imagenet.tar
+│       └── tiered-imagenet
+│           └── ...
 └── ...
 
 ```
